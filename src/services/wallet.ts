@@ -104,7 +104,12 @@ export class WalletService {
   /**
    * Unlocks the wallet using password
    */
-  async unlockWallet(password: string): Promise<string> {
+  async unlockWallet(password: string): Promise<{
+    mainnetAddress: string;
+    testnetAddress: string;
+    currentAddress: string;
+    network: 'mainnet' | 'testnet';
+  }> {
     const config = configManager.get();
     const keystorePath = config.wallet.keystorePath;
 
@@ -114,13 +119,22 @@ export class WalletService {
 
       const privateKey = await decryptPrivateKey(keystore, password);
 
-      const network = config.network === 'mainnet' ? TransactionVersion.Mainnet : TransactionVersion.Testnet;
-      const address = getAddressFromPrivateKey(privateKey, network);
+      // Derive both mainnet and testnet addresses
+      const mainnetAddress = getAddressFromPrivateKey(privateKey, TransactionVersion.Mainnet);
+      const testnetAddress = getAddressFromPrivateKey(privateKey, TransactionVersion.Testnet);
+
+      // Set current address based on config
+      const currentAddress = config.network === 'mainnet' ? mainnetAddress : testnetAddress;
 
       this.privateKey = privateKey;
-      this.address = address;
+      this.address = currentAddress;
 
-      return address;
+      return {
+        mainnetAddress,
+        testnetAddress,
+        currentAddress,
+        network: config.network,
+      };
     } catch (error: any) {
       throw new Error(`Failed to unlock wallet: ${error.message}`);
     }
@@ -145,6 +159,17 @@ export class WalletService {
   }
 
   /**
+   * Gets the wallet address for a specific network
+   */
+  getAddressForNetwork(network: 'mainnet' | 'testnet'): string {
+    if (!this.privateKey) {
+      throw new Error('Wallet is locked. Please unlock first.');
+    }
+    const version = network === 'mainnet' ? TransactionVersion.Mainnet : TransactionVersion.Testnet;
+    return getAddressFromPrivateKey(this.privateKey, version);
+  }
+
+  /**
    * Gets the current wallet info
    */
   getWalletInfo(): WalletInfo {
@@ -160,13 +185,29 @@ export class WalletService {
   }
 
   /**
+   * Detects network from address prefix
+   * SP = mainnet, ST = testnet
+   */
+  private detectNetworkFromAddress(address: string): 'mainnet' | 'testnet' {
+    if (address.startsWith('SP')) return 'mainnet';
+    if (address.startsWith('ST')) return 'testnet';
+    // Default to config network if we can't detect
+    const config = configManager.get();
+    return config.network;
+  }
+
+  /**
    * Gets wallet balance (STX and tokens)
    */
   async getBalance(address?: string): Promise<WalletBalance> {
     const targetAddress = address || this.getAddress();
 
+    // Detect network from address and use appropriate API client
+    const detectedNetwork = this.detectNetworkFromAddress(targetAddress);
+    const apiClient = new StacksApiClient(detectedNetwork);
+
     // Get STX balance
-    const stxBalance = await this.apiClient.getStxBalance(targetAddress);
+    const stxBalance = await apiClient.getStxBalance(targetAddress);
 
     // Get token balances for well-known tokens
     const tokenBalances: TokenBalance[] = [];
@@ -175,7 +216,7 @@ export class WalletService {
       if (symbol === 'STX') continue; // Skip STX, already handled
 
       try {
-        const balance = await this.apiClient.getTokenBalance(
+        const balance = await apiClient.getTokenBalance(
           targetAddress,
           tokenInfo.contract
         );

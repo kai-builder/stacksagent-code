@@ -1,6 +1,8 @@
 # Stacks MCP Server
 
-A Model Context Protocol (MCP) server that enables Claude Desktop to interact with the Stacks blockchain. Manage your wallet, trade tokens, stack STX, and track your portfolio—all through natural conversation.
+A Model Context Protocol (MCP) server that enables Claude Desktop to interact with the Stacks blockchain. Manage your wallet, trade tokens, stack STX, track your portfolio, and **develop & deploy Clarity smart contracts**—all through natural conversation.
+
+> **New in v0.2.0**: Complete Clarity smart contract development lifecycle with intelligent example search and blockchain deployment!
 
 > **Note**: This is an MVP (Minimum Viable Product) release. Some features use mock data and are being actively developed. See [Limitations](#limitations-mvp) for details.
 
@@ -31,6 +33,23 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to interact wi
 - Portfolio value tracking over time
 - P&L calculations
 
+### BNS (Bitcoin Name System)
+- Resolve BNS names to addresses
+- Get primary names for addresses
+- Look up name ownership and details
+- Check name resolution status
+
+### 🆕 Clarity Smart Contract Development
+- **Generate contracts** from natural language (6 templates: FT, NFT, Vault, DAO, Marketplace, Custom)
+- **Audit contracts** with comprehensive security analysis (0-100 score)
+- **Deploy contracts** to testnet or mainnet with one command (0.1 STX fee)
+- **Network validation** - automatically prevents deployment with wrong trait addresses
+- **Intelligent search** through 27+ example contracts
+- **Documentation integration** from 1,352 lines of Clarity.md
+- **Pattern matching** for better contract generation
+- **Security checks** based on best practices (including network compatibility)
+- **Explorer integration** for transaction monitoring
+
 ## Installation
 
 ### Prerequisites
@@ -41,9 +60,7 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to interact wi
 
 **Option 1: Install from npm (when published)**
 
-```bash
-npm install -g stacksagent-mcp
-```
+coming soon
 
 **Option 2: Build from source (recommended for now)**
 

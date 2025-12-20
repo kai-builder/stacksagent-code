@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { ClarityService } from '../services/clarity.js';
 import { ContractGenerationOptions } from '../types/index.js';
+import { WalletService } from '../services/wallet.js';
 
-export const clarityTools = (clarityService: ClarityService) => ({
+export const clarityTools = (clarityService: ClarityService, walletService: WalletService) => ({
   clarity_write_contract: {
     description:
       'Generates a new Clarity smart contract (.clar file) from natural language requirements. Supports common patterns like fungible tokens, NFTs, vaults, DAOs, and custom contracts. The generated contract will be saved to the contracts/ directory.',
@@ -200,6 +201,151 @@ export const clarityTools = (clarityService: ClarityService) => ({
                   'Recommend testing on testnet',
                   'Consider professional audit for high-value contracts',
                 ],
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  deploy_clarity_contract: {
+    description:
+      'Deploys a Clarity smart contract to the Stacks blockchain (testnet or mainnet). Requires an unlocked wallet. IMPORTANT: Always deploy to testnet first for testing before deploying to mainnet.',
+    parameters: z.object({
+      contractName: z
+        .string()
+        .describe(
+          'Name for the deployed contract (must start with lowercase letter, contain only lowercase letters, numbers, and hyphens). Example: "my-token-v1"'
+        ),
+      contractCode: z
+        .string()
+        .describe('The complete Clarity contract code to deploy (full .clar file content as a string)'),
+      network: z
+        .enum(['testnet', 'mainnet'])
+        .describe(
+          'Target network for deployment. ALWAYS use "testnet" for testing first, only use "mainnet" for production after thorough testing.'
+        ),
+      confirmMainnet: z
+        .boolean()
+        .optional()
+        .describe(
+          'Required confirmation for mainnet deployment. Must be true to deploy to mainnet. This is a safety check.'
+        ),
+    }),
+    handler: async (args: {
+      contractName: string;
+      contractCode: string;
+      network: 'testnet' | 'mainnet';
+      confirmMainnet?: boolean;
+    }) => {
+      try {
+        // Safety check for mainnet deployment
+        if (args.network === 'mainnet' && !args.confirmMainnet) {
+          return {
+            success: false,
+            error:
+              'Mainnet deployment requires confirmMainnet: true. This is a safety check to prevent accidental mainnet deployments. Always test on testnet first!',
+            recommendation: [
+              'Deploy to testnet first for testing',
+              'Verify contract functionality on testnet',
+              'Run clarity_audit_contract to check for issues',
+              'Only deploy to mainnet after thorough testing',
+              'Set confirmMainnet: true to proceed with mainnet deployment',
+            ],
+          };
+        }
+
+        // Check if wallet is unlocked
+        if (!walletService.isUnlocked()) {
+          return {
+            success: false,
+            error: 'Wallet is locked. Please unlock your wallet first using wallet_unlock.',
+            nextSteps: [
+              'Use wallet_unlock tool to unlock your wallet',
+              'Then retry the deployment',
+            ],
+          };
+        }
+
+        // Get private key from wallet service
+        const privateKey = walletService.getPrivateKey();
+
+        // Get the actual address that will be used for deployment (network-specific)
+        const deployerAddress = walletService.getAddressForNetwork(args.network);
+
+        // Get current config address for comparison
+        const currentAddress = walletService.getAddress();
+
+        // Warn user if deploying to different network than current config
+        if (deployerAddress !== currentAddress) {
+          console.error(
+            `⚠️  NOTE: Deploying to ${args.network} using address ${deployerAddress} (current config uses ${currentAddress})`
+          );
+        }
+
+        // Additional warning for mainnet
+        if (args.network === 'mainnet') {
+          console.error(
+            '⚠️  WARNING: Deploying to MAINNET. This will use real STX for transaction fees!'
+          );
+        }
+
+        // Deploy contract
+        const result = await clarityService.deployContract(
+          args.contractName,
+          args.contractCode,
+          privateKey,
+          args.network
+        );
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error,
+            deploymentAttempt: {
+              network: args.network,
+              deployerAddress: deployerAddress,
+              contractName: args.contractName,
+            },
+            troubleshooting: [
+              'Check that your contract has valid Clarity syntax',
+              `Ensure ${deployerAddress} has enough STX on ${args.network} for transaction fees`,
+              `For testnet: Get free STX from https://explorer.hiro.so/sandbox/faucet?chain=testnet`,
+              'Verify the contract name is valid (lowercase, alphanumeric, hyphens only)',
+              'Make sure you are connected to the correct network',
+            ],
+            hint: `Deployment will use ${args.network} address: ${deployerAddress}. Check this address has sufficient STX balance.`,
+          };
+        }
+
+        return {
+          success: true,
+          txId: result.txId,
+          contractId: result.contractId,
+          network: args.network,
+          deployerAddress: deployerAddress,
+          explorerUrl: result.explorerUrl,
+          message: `Contract '${args.contractName}' deployed successfully to ${args.network}!`,
+          deploymentInfo: {
+            network: args.network,
+            deployerAddress: deployerAddress,
+            contractName: args.contractName,
+            contractId: result.contractId,
+          },
+          nextSteps: [
+            `Monitor transaction status: ${result.explorerUrl}`,
+            'Wait for transaction confirmation (typically 10-30 minutes)',
+            `Contract will be available at: ${result.contractId}`,
+            `Deployer address: ${deployerAddress}`,
+            args.network === 'testnet'
+              ? 'After testing on testnet, deploy to mainnet if everything works correctly'
+              : 'Contract is now live on mainnet',
+          ],
+          estimatedConfirmationTime:
+            'Transactions typically confirm in 10-30 minutes (depends on Bitcoin block time)',
         };
       } catch (error: any) {
         return {

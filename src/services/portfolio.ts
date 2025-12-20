@@ -9,6 +9,7 @@ export class PortfolioService {
   private priceService: PriceService;
   private apiClient: StacksApiClient;
   private stackingService: StackingService;
+  private defaultNetwork: 'mainnet' | 'testnet';
 
   constructor(
     walletService: WalletService,
@@ -18,6 +19,7 @@ export class PortfolioService {
     this.priceService = new PriceService();
     this.apiClient = new StacksApiClient(network);
     this.stackingService = new StackingService(network);
+    this.defaultNetwork = network;
   }
 
   /**
@@ -84,6 +86,16 @@ export class PortfolioService {
   }
 
   /**
+   * Detects network from address prefix
+   */
+  private detectNetworkFromAddress(address: string): 'mainnet' | 'testnet' {
+    if (address.startsWith('SP')) return 'mainnet';
+    if (address.startsWith('ST')) return 'testnet';
+    // Default to constructor network if we can't detect
+    return this.defaultNetwork;
+  }
+
+  /**
    * Gets transaction history for an address
    */
   async getTransactionHistory(
@@ -92,7 +104,12 @@ export class PortfolioService {
   ): Promise<Transaction[]> {
     try {
       const targetAddress = address || this.walletService.getAddress();
-      return await this.apiClient.getTransactions(targetAddress, limit);
+
+      // Detect network from address and use appropriate API client
+      const detectedNetwork = this.detectNetworkFromAddress(targetAddress);
+      const apiClient = new StacksApiClient(detectedNetwork);
+
+      return await apiClient.getTransactions(targetAddress, limit);
     } catch (error: any) {
       throw new Error(`Failed to get transaction history: ${error.message}`);
     }

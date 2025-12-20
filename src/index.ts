@@ -102,7 +102,7 @@ class StacksMCPServer {
     }
 
     // Clarity tools
-    const clarity = clarityTools(this.clarityService);
+    const clarity = clarityTools(this.clarityService, this.walletService);
     for (const [name, tool] of Object.entries(clarity)) {
       this.tools.set(name, tool);
     }

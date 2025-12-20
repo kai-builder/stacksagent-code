@@ -328,6 +328,69 @@ export function extractContractName(code: string): string {
 }
 
 /**
+ * Validates that trait addresses match the target network
+ * Returns array of mismatched trait addresses
+ */
+export function validateTraitAddresses(
+  code: string,
+  targetNetwork: 'mainnet' | 'testnet'
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  // Known trait addresses
+  const MAINNET_TRAITS = [
+    'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE', // SIP-010 FT
+    'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9', // SIP-009 NFT
+  ];
+
+  const TESTNET_TRAITS = [
+    'ST339A455EK9PAY9NP81WHK73T1JMFC3NN0321T18', // SIP-010 FT
+    'ST1NXBK3K5YYMD6FD41MVNP3JS1GABZ8TRVX023PT', // SIP-009 NFT
+  ];
+
+  // Extract all trait implementations
+  const traitRegex = /\((?:impl-trait|use-trait)\s+[a-z-]+\s+['"]?([^'")\s]+)['"]?\)/g;
+  let match;
+
+  while ((match = traitRegex.exec(code)) !== null) {
+    const traitAddress = match[1];
+
+    // Extract the principal (contract deployer address) from trait reference
+    // Format: SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait
+    const principalMatch = traitAddress.match(/^([A-Z0-9]+)\./);
+    if (principalMatch) {
+      const principal = principalMatch[1];
+
+      // Check if it's a known trait address
+      const isMainnetTrait = MAINNET_TRAITS.includes(principal);
+      const isTestnetTrait = TESTNET_TRAITS.includes(principal);
+
+      if (isMainnetTrait || isTestnetTrait) {
+        // Verify it matches the target network
+        if (targetNetwork === 'mainnet' && isTestnetTrait) {
+          errors.push(
+            `Testnet trait address detected: ${principal}\n` +
+            `  Contract is deploying to MAINNET but uses testnet trait: ${traitAddress}\n` +
+            `  Expected mainnet trait starting with: ${MAINNET_TRAITS.join(' or ')}`
+          );
+        } else if (targetNetwork === 'testnet' && isMainnetTrait) {
+          errors.push(
+            `Mainnet trait address detected: ${principal}\n` +
+            `  Contract is deploying to TESTNET but uses mainnet trait: ${traitAddress}\n` +
+            `  Expected testnet trait starting with: ${TESTNET_TRAITS.join(' or ')}`
+          );
+        }
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}
+
+/**
  * Checks for redundant operations
  */
 export function findRedundantOperations(code: string): any[] {

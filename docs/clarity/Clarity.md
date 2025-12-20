@@ -300,8 +300,15 @@ Traits define interfaces that contracts can implement:
   )
 )
 
-;; Implement a trait
-(impl-trait .sip-010-trait-ft-standard.sip-010-trait)
+;; Implement a trait - NETWORK-SPECIFIC ADDRESSES
+;; MAINNET:
+(impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+;; TESTNET:
+(impl-trait 'ST339A455EK9PAY9NP81WHK73T1JMFC3NN0321T18.sip-010-trait-ft-standard.sip-010-trait)
+
+;; ⚠️ IMPORTANT: SIP-010 trait contract addresses differ between networks!
+;; Always use the correct address for your target network.
 
 ;; Use a trait as parameter type
 (use-trait ft-trait .sip-010-trait-ft-standard.sip-010-trait)

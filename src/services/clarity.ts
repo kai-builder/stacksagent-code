@@ -25,6 +25,9 @@ import {
   extractContractName,
   findRedundantOperations,
 } from '../utils/clarity-validator.js';
+import { makeContractDeploy, broadcastTransaction, AnchorMode } from '@stacks/transactions';
+import { StacksTestnet, StacksMainnet } from '@stacks/network';
+import { STACKS_MAINNET_API, STACKS_TESTNET_API } from '../utils/constants.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -84,8 +87,11 @@ export class ClarityService {
       // Parse requirements to extract custom values
       const customValues = this.parseRequirementsForPlaceholders(requirements, template.placeholders);
 
-      // Merge default and custom values
-      const placeholderValues = { ...defaultValues, ...customValues };
+      // Add network-specific trait addresses
+      const networkTraitAddresses = this.getNetworkTraitAddresses();
+
+      // Merge default, custom values, and network-specific addresses
+      const placeholderValues = { ...defaultValues, ...customValues, ...networkTraitAddresses };
 
       // Generate contract code from template
       let contractCode = fillTemplate(template, placeholderValues);
@@ -388,6 +394,25 @@ export class ClarityService {
    */
   private extractContractNameFromCode(code: string): string {
     return extractContractName(code);
+  }
+
+  /**
+   * Gets network-specific trait addresses for contract templates
+   * SIP-010 (Fungible Token) and SIP-009 (NFT) trait addresses differ between networks
+   */
+  private getNetworkTraitAddresses(): Record<string, string> {
+    if (this.network === 'mainnet') {
+      return {
+        TRAIT_ADDRESS: 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE',
+        NFT_TRAIT_ADDRESS: 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9',
+      };
+    } else {
+      // testnet
+      return {
+        TRAIT_ADDRESS: 'ST339A455EK9PAY9NP81WHK73T1JMFC3NN0321T18',
+        NFT_TRAIT_ADDRESS: 'ST1NXBK3K5YYMD6FD41MVNP3JS1GABZ8TRVX023PT',
+      };
+    }
   }
 
   /**
@@ -737,6 +762,67 @@ export class ClarityService {
       }
     });
 
+    // Check 4: Trait address network compatibility
+    // This is CRITICAL for contracts using SIP-010 or SIP-009 traits
+    const traitRegex = /\((?:impl-trait|use-trait)\s+[a-z-]+\s+['"]?([^'")\s]+)['"]?\)/g;
+    let traitMatch;
+    const foundTraits: string[] = [];
+
+    while ((traitMatch = traitRegex.exec(contractCode)) !== null) {
+      foundTraits.push(traitMatch[1]);
+    }
+
+    // Check each trait for network prefix
+    foundTraits.forEach((trait) => {
+      const principalMatch = trait.match(/^([A-Z0-9]+)\./);
+      if (principalMatch) {
+        const principal = principalMatch[1];
+        const isMainnet = principal.startsWith('SP');
+        const isTestnet = principal.startsWith('ST');
+
+        if (isMainnet || isTestnet) {
+          // Known standard traits
+          const knownMainnetTraits = [
+            'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE', // SIP-010
+            'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9', // SIP-009
+          ];
+          const knownTestnetTraits = [
+            'ST339A455EK9PAY9NP81WHK73T1JMFC3NN0321T18', // SIP-010
+            'ST1NXBK3K5YYMD6FD41MVNP3JS1GABZ8TRVX023PT', // SIP-009
+          ];
+
+          const isKnownMainnet = knownMainnetTraits.includes(principal);
+          const isKnownTestnet = knownTestnetTraits.includes(principal);
+
+          if (isKnownMainnet || isKnownTestnet) {
+            // Add critical warning about network compatibility
+            const network = isKnownMainnet ? 'mainnet' : 'testnet';
+            const oppositeNetwork = isKnownMainnet ? 'testnet' : 'mainnet';
+
+            issues.push({
+              severity: 'critical',
+              category: 'Network Compatibility',
+              title: `Trait uses ${network} address - verify deployment target`,
+              description:
+                `Contract uses ${network} trait address: ${trait}\n` +
+                `This contract MUST be deployed to ${network.toUpperCase()}.\n` +
+                `If deploying to ${oppositeNetwork}, the deployment will FAIL.\n\n` +
+                `Network-specific trait addresses:\n` +
+                `• Mainnet SIP-010: SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE\n` +
+                `• Testnet SIP-010: ST339A455EK9PAY9NP81WHK73T1JMFC3NN0321T18\n` +
+                `• Mainnet SIP-009: SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9\n` +
+                `• Testnet SIP-009: ST1NXBK3K5YYMD6FD41MVNP3JS1GABZ8TRVX023PT`,
+              location: { line: 0 },
+              recommendation:
+                `Ensure this contract is deployed to ${network}. ` +
+                `If you need to deploy to ${oppositeNetwork}, regenerate the contract with the correct network configuration.`,
+              cwe: 'CWE-668',
+            });
+          }
+        }
+      }
+    });
+
     return issues;
   }
 
@@ -903,5 +989,103 @@ export class ClarityService {
     if (summary.critical > 0) return 'critical-issues';
     if (score < 70 || summary.high > 0) return 'needs-review';
     return 'approved';
+  }
+
+  /**
+   * Deploys a Clarity contract to Stacks blockchain
+   */
+  async deployContract(
+    contractName: string,
+    contractCode: string,
+    privateKey: string,
+    targetNetwork: 'mainnet' | 'testnet'
+  ): Promise<{
+    success: boolean;
+    txId?: string;
+    contractId?: string;
+    explorerUrl?: string;
+    error?: string;
+  }> {
+    try {
+      // Validate contract name (must be valid Clarity identifier)
+      if (!/^[a-z][a-z0-9-]*$/.test(contractName)) {
+        throw new Error(
+          'Invalid contract name. Must start with lowercase letter and contain only lowercase letters, numbers, and hyphens.'
+        );
+      }
+
+      // Validate contract code syntax
+      const validation = validateClaritySyntax(contractCode);
+      if (!validation.valid) {
+        throw new Error(
+          `Contract has syntax errors: ${validation.errors.map((e) => e.message).join(', ')}`
+        );
+      }
+
+      // CRITICAL: Validate trait addresses match target network
+      const { validateTraitAddresses } = await import('../utils/clarity-validator.js');
+      const traitValidation = validateTraitAddresses(contractCode, targetNetwork);
+      if (!traitValidation.valid) {
+        throw new Error(
+          `Trait address network mismatch:\n${traitValidation.errors.join('\n\n')}\n\n` +
+          `⚠️ DEPLOYMENT BLOCKED: Contract uses wrong trait addresses for ${targetNetwork}.`
+        );
+      }
+
+      // Select network with explicit API URL
+      const network = targetNetwork === 'mainnet'
+        ? new StacksMainnet({ url: STACKS_MAINNET_API })
+        : new StacksTestnet({ url: STACKS_TESTNET_API });
+
+      // Prepare deployment transaction
+      const txOptions = {
+        contractName,
+        codeBody: contractCode,
+        senderKey: privateKey,
+        network,
+        anchorMode: AnchorMode.Any,
+        fee: 100000, // 0.1 STX (100,000 microSTX)
+      };
+
+      // Create contract deploy transaction
+      const transaction = await makeContractDeploy(txOptions);
+
+      // Broadcast transaction
+      const broadcastResponse = await broadcastTransaction(transaction, network);
+
+      // Check for errors in broadcast response
+      if ('error' in broadcastResponse) {
+        throw new Error(
+          `Broadcast failed: ${broadcastResponse.error}${
+            broadcastResponse.reason ? ` - ${broadcastResponse.reason}` : ''
+          }`
+        );
+      }
+
+      const txId = broadcastResponse.txid;
+
+      // Get sender address for contract ID
+      const senderAddress = transaction.auth.spendingCondition?.signer || 'unknown';
+      const contractId = `${senderAddress}.${contractName}`;
+
+      // Generate explorer URL
+      const explorerBaseUrl =
+        targetNetwork === 'mainnet'
+          ? 'https://explorer.stacks.co'
+          : 'https://explorer.hiro.so';
+      const explorerUrl = `${explorerBaseUrl}/txid/${txId}?chain=${targetNetwork}`;
+
+      return {
+        success: true,
+        txId,
+        contractId,
+        explorerUrl,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message || 'Deployment failed',
+      };
+    }
   }
 }

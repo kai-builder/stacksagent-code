@@ -75,12 +75,20 @@ export const walletTools = (walletService: WalletService) => ({
     }),
     handler: async (args: { password: string }) => {
       try {
-        const address = await walletService.unlockWallet(args.password);
+        const result = await walletService.unlockWallet(args.password);
 
         return {
           success: true,
-          address,
-          message: 'Wallet unlocked successfully',
+          currentAddress: result.currentAddress,
+          mainnetAddress: result.mainnetAddress,
+          testnetAddress: result.testnetAddress,
+          network: result.network,
+          message: `Wallet unlocked successfully. Current network: ${result.network}`,
+          networkInfo: {
+            mainnet: `Your mainnet address: ${result.mainnetAddress}`,
+            testnet: `Your testnet address: ${result.testnetAddress}`,
+            active: `Active address (${result.network}): ${result.currentAddress}`,
+          },
         };
       } catch (error: any) {
         return {
