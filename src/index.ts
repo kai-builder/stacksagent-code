@@ -15,6 +15,7 @@ import { StackingService } from './services/stacking.js';
 import { PortfolioService } from './services/portfolio.js';
 import { BnsService } from './services/bns.js';
 import { ClarityService } from './services/clarity.js';
+import { WalletMigration } from './services/wallet-migration.js';
 import { configManager } from './utils/config.js';
 
 import { walletTools } from './tools/wallet-tools.js';
@@ -200,6 +201,9 @@ class StacksMCPServer {
     // Load configuration
     await configManager.load();
 
+    // Check and perform wallet migration if needed
+    await this.checkMigration();
+
     // Create transport
     const transport = new StdioServerTransport();
 
@@ -207,6 +211,69 @@ class StacksMCPServer {
     await this.server.connect(transport);
 
     console.error('Stacks MCP Server running on stdio');
+  }
+
+  /**
+   * Check if wallet migration is needed and perform it
+   */
+  private async checkMigration(): Promise<void> {
+    try {
+      const migration = new WalletMigration(this.walletService);
+
+      // Check if migration is needed
+      const needsMigration = await migration.needsMigration();
+
+      if (needsMigration) {
+        console.error('='.repeat(80));
+        console.error('WALLET MIGRATION REQUIRED');
+        console.error('='.repeat(80));
+        console.error('');
+        console.error('Your wallet is being migrated to the new multi-wallet system...');
+        console.error('');
+
+        // Perform migration
+        const result = await migration.migrate();
+
+        if (result.success) {
+          console.error('✓ Migration completed successfully');
+          console.error('');
+          console.error(result.message);
+          console.error('');
+
+          if (result.requiresUserAction) {
+            console.error('⚠  ACTION REQUIRED:');
+            console.error('   You need to re-import your wallet using your 24-word mnemonic phrase.');
+            console.error('   Use the wallet_import tool to import your wallet.');
+            console.error('');
+          }
+
+          if (result.backupPath) {
+            console.error(`   Legacy wallet backed up to: ${result.backupPath}`);
+            console.error('');
+          }
+        } else {
+          console.error('✗ Migration failed:', result.message);
+          console.error('');
+          console.error('The server will continue, but you may need to manually migrate your wallet.');
+          console.error('');
+        }
+
+        console.error('='.repeat(80));
+        console.error('');
+      } else {
+        // Check migration status for informational purposes
+        const status = await migration.getStatus();
+
+        if (status.migrated) {
+          console.error(`✓ Wallet system: Multi-wallet (${status.walletsCount} wallet(s))`);
+        } else if (status.walletsCount === 0) {
+          console.error('ℹ No wallets found. Use wallet_create or wallet_import to get started.');
+        }
+      }
+    } catch (error: any) {
+      console.error('Warning: Failed to check wallet migration status:', error.message);
+      // Continue server startup even if migration check fails
+    }
   }
 }
 

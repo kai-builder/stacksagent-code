@@ -3,14 +3,27 @@ import { homedir } from 'os';
 import { join } from 'path';
 
 export const DEFAULT_CONFIG_DIR = join(homedir(), '.stacks-mcp');
-export const DEFAULT_KEYSTORE_PATH = join(DEFAULT_CONFIG_DIR, 'wallet.enc');
+export const DEFAULT_KEYSTORE_PATH = join(DEFAULT_CONFIG_DIR, 'wallet.enc'); // DEPRECATED - kept for backward compatibility
 export const DEFAULT_CONFIG_PATH = join(DEFAULT_CONFIG_DIR, 'config.json');
+
+// Multi-wallet paths
+export const WALLETS_DIR = join(DEFAULT_CONFIG_DIR, 'wallets');
+export const WALLET_INDEX_PATH = join(DEFAULT_CONFIG_DIR, 'wallets.json');
+
+// BIP44 constants
+export const BIP44_STACKS_COIN_TYPE = 5757;
 
 export const DEFAULT_CONFIG: Config = {
   network: 'mainnet',
   wallet: {
-    keystorePath: DEFAULT_KEYSTORE_PATH,
+    keystorePath: DEFAULT_KEYSTORE_PATH, // DEPRECATED - kept for backward compatibility
+    walletsDir: WALLETS_DIR,
     autoLockMinutes: 15,
+  },
+  activeSession: {
+    walletId: null,
+    accountIndex: 0,
+    network: 'mainnet',
   },
   rpc: {
     primary: 'https://api.hiro.so',
@@ -68,7 +81,7 @@ export const MIN_STACKING_AMOUNT = 100000000000; // 100,000 STX
 
 // Encryption parameters
 export const SCRYPT_PARAMS = {
-  N: 262144, // 2^18
+  N: 16384, // 2^14 - reduced for OpenSSL memory limits in containerized environments
   r: 8,
   p: 1,
   dklen: 32,
