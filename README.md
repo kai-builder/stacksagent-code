@@ -58,11 +58,13 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to interact wi
 
 ### Quick Start
 
-**Option 1: Install from npm (when published)**
+**Option 1: Install from npm (Recommended)**
 
-coming soon
+```bash
+npm install -g stacks-agent-mcp
+```
 
-**Option 2: Build from source (recommended for now)**
+**Option 2: Build from source**
 
 1. Clone the repository:
 ```bash
@@ -86,24 +88,71 @@ npm run build
 
 ## Configuration
 
-### 1. Configure Claude Desktop
-
-Add the MCP server to your Claude Desktop configuration file.
+### 1. Open the Claude Desktop Configuration File
 
 **Configuration file location:**
 - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux:** `~/.config/Claude/claude_desktop_config.json`
 
-Create the file if it doesn't exist, or edit it to add the `stacks` MCP server.
+**How to open/edit the file:**
 
-#### If installed via npm:
+**On macOS:**
+```bash
+# Option 1: Open in default text editor
+open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+# Option 2: Open with VS Code
+code ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+# Option 3: Edit with nano
+nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
+```
+
+**On Windows (PowerShell):**
+```powershell
+# Open with notepad
+notepad "$env:APPDATA\Claude\claude_desktop_config.json"
+```
+
+**On Linux:**
+```bash
+# Open with default editor
+xdg-open ~/.config/Claude/claude_desktop_config.json
+
+# Or with nano
+nano ~/.config/Claude/claude_desktop_config.json
+```
+
+**If the file doesn't exist**, create it:
+```bash
+# macOS
+mkdir -p ~/Library/Application\ Support/Claude
+echo '{"mcpServers":{}}' > ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+# Windows (PowerShell)
+New-Item -ItemType Directory -Force -Path "$env:APPDATA\Claude"
+'{"mcpServers":{}}' | Out-File -FilePath "$env:APPDATA\Claude\claude_desktop_config.json" -Encoding utf8
+
+# Linux
+mkdir -p ~/.config/Claude
+echo '{"mcpServers":{}}' > ~/.config/Claude/claude_desktop_config.json
+```
+
+### 2. Add the MCP Server Configuration
+
+Choose the configuration based on how you installed the package:
+
+#### Option 1: If installed via npm (Recommended)
+
+Add this to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "stacks": {
+    "stacksagent": {
       "command": "npx",
-      "args": ["-y", "stacksagent-mcp"],
+      "args": ["-y", "stacks-agent-mcp"],
       "env": {
         "STACKS_NETWORK": "mainnet"
       }
@@ -112,13 +161,15 @@ Create the file if it doesn't exist, or edit it to add the `stacks` MCP server.
 }
 ```
 
-#### If built from source:
+> **⚠️ Common Mistake:** Don't use `"command": "node"` with `"args": ["-y", "stacks-agent-mcp"]` - the `-y` flag only works with `npx`, not `node`!
+
+#### Option 2: If built from source
 
 **macOS/Linux:**
 ```json
 {
   "mcpServers": {
-    "stacks": {
+    "stacksagent": {
       "command": "node",
       "args": ["/absolute/path/to/stacksagent-mcp/dist/index.js"],
       "env": {
@@ -133,7 +184,7 @@ Create the file if it doesn't exist, or edit it to add the `stacks` MCP server.
 ```json
 {
   "mcpServers": {
-    "stacks": {
+    "stacksagent": {
       "command": "node",
       "args": ["C:\\absolute\\path\\to\\stacksagent-mcp\\dist\\index.js"],
       "env": {
@@ -144,23 +195,63 @@ Create the file if it doesn't exist, or edit it to add the `stacks` MCP server.
 }
 ```
 
-**Important:** Replace `/absolute/path/to/stacksagent-mcp` with the actual path where you cloned the repository.
+**Get your absolute path:**
+```bash
+# macOS/Linux
+cd /path/to/stacksagent-mcp
+pwd
+# Copy the output and append /dist/index.js
+
+# Windows
+cd C:\path\to\stacksagent-mcp
+cd
+# Copy the output and append \dist\index.js
+```
 
 Example paths:
 - macOS: `/Users/yourname/Projects/stacksagent-mcp/dist/index.js`
 - Linux: `/home/yourname/projects/stacksagent-mcp/dist/index.js`
 - Windows: `C:\\Users\\YourName\\Projects\\stacksagent-mcp\\dist\\index.js`
 
-### 2. Restart Claude Desktop
+#### Option 3: Using direct binary path
+
+If you know where the package is installed (find with `which stacks-agent-mcp` on macOS/Linux):
+
+```json
+{
+  "mcpServers": {
+    "stacksagent": {
+      "command": "stacks-agent-mcp",
+      "args": [],
+      "env": {
+        "STACKS_NETWORK": "mainnet"
+      }
+    }
+  }
+}
+```
+
+### 3. Restart Claude Desktop
 
 After editing the configuration file:
-1. **Completely quit** Claude Desktop (not just close the window)
-2. **Restart** Claude Desktop
-3. The MCP server should now be available
 
-You can verify it's working by asking Claude: "What Stacks blockchain tools do you have available?"
+1. **Save the file** (Cmd+S or Ctrl+S)
+2. **Completely quit** Claude Desktop (not just close the window)
+   - macOS: Press `Cmd+Q` or right-click dock icon → Quit
+   - Windows: Right-click system tray → Exit
+3. **Wait 5 seconds**
+4. **Restart** Claude Desktop
 
-### 3. Server Configuration (Optional)
+### 4. Verify It's Working
+
+Open a new conversation in Claude and ask:
+```
+What Stacks blockchain tools do you have available?
+```
+
+If Claude responds with a list of Stacks tools, you're all set! If not, check the [Troubleshooting](#troubleshooting) section below.
+
+### 5. Server Configuration (Optional)
 
 The server creates a config file at `~/.stacks-mcp/config.json` on first run. You can customize:
 
@@ -423,11 +514,224 @@ This is an MVP release. Some features are not yet fully implemented:
 
 ## Troubleshooting
 
+### Cannot access or edit `claude_desktop_config.json`
+
+**Problem:** Error when trying to navigate to the config file, or file doesn't exist.
+
+**Solution:**
+
+**On macOS:**
+
+1. **Open the config file directly** (don't use `cd` - it's a file, not a directory):
+   ```bash
+   # Option 1: Open in default text editor
+   open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+   # Option 2: Open with VS Code
+   code ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+   # Option 3: Open with nano
+   nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+   # Option 4: View the file
+   cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
+   ```
+
+2. **If the file doesn't exist**, create it:
+   ```bash
+   # Create the directory if needed
+   mkdir -p ~/Library/Application\ Support/Claude
+
+   # Create the file with basic structure
+   echo '{"mcpServers":{}}' > ~/Library/Application\ Support/Claude/claude_desktop_config.json
+
+   # Now edit it
+   open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
+   ```
+
+3. **Verify the file location** (macOS):
+   ```bash
+   # Check if file exists
+   ls -la ~/Library/Application\ Support/Claude/
+   ```
+
+**On Windows:**
+
+1. **Open the config file**:
+   ```powershell
+   # In PowerShell
+   notepad "$env:APPDATA\Claude\claude_desktop_config.json"
+
+   # Or navigate to it in File Explorer:
+   # Press Win+R, paste: %APPDATA%\Claude
+   # Then open claude_desktop_config.json
+   ```
+
+2. **If the file doesn't exist**, create it:
+   ```powershell
+   # Create the directory
+   New-Item -ItemType Directory -Force -Path "$env:APPDATA\Claude"
+
+   # Create the file
+   '{"mcpServers":{}}' | Out-File -FilePath "$env:APPDATA\Claude\claude_desktop_config.json" -Encoding utf8
+
+   # Open it
+   notepad "$env:APPDATA\Claude\claude_desktop_config.json"
+   ```
+
+**On Linux:**
+
+1. **Open the config file**:
+   ```bash
+   # With default editor
+   xdg-open ~/.config/Claude/claude_desktop_config.json
+
+   # With nano
+   nano ~/.config/Claude/claude_desktop_config.json
+   ```
+
+2. **If the file doesn't exist**:
+   ```bash
+   mkdir -p ~/.config/Claude
+   echo '{"mcpServers":{}}' > ~/.config/Claude/claude_desktop_config.json
+   ```
+
+### "MCP Server failed to attach" or "Could not connect to MCP server"
+
+**Problem:** Claude Desktop shows an error that the MCP server failed to start or couldn't attach.
+
+**Common causes:**
+
+1. **Using `node` command with `-y` flag (Wrong!)**
+
+   ❌ **Incorrect:**
+   ```json
+   {
+     "mcpServers": {
+       "stacksagent": {
+         "command": "node",
+         "args": ["-y", "stacks-agent-mcp"]
+       }
+     }
+   }
+   ```
+
+   ✅ **Correct:**
+   ```json
+   {
+     "mcpServers": {
+       "stacksagent": {
+         "command": "npx",
+         "args": ["-y", "stacks-agent-mcp"],
+         "env": {
+           "STACKS_NETWORK": "mainnet"
+         }
+       }
+     }
+   }
+   ```
+
+   > The `-y` flag only works with `npx`, not with `node`!
+
+2. **Package not found**
+   ```bash
+   # Verify the package is installed
+   which stacks-agent-mcp
+
+   # If not found, install it
+   npm install -g stacks-agent-mcp
+   ```
+
+3. **Wrong path in config**
+   ```bash
+   # Test the command directly
+   npx -y stacks-agent-mcp
+   # If this fails, your npm installation may have issues
+   ```
+
+**Solution:**
+1. Open your config file:
+   ```bash
+   open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
+   ```
+2. Use the correct configuration (see [Configuration](#configuration) section)
+3. Save and completely restart Claude Desktop (Cmd+Q, then reopen)
+
 ### Claude Desktop doesn't see the tools
 
-1. Check that `claude_desktop_config.json` is valid JSON
-2. Restart Claude Desktop completely
-3. Check logs: `~/Library/Logs/Claude/mcp*.log` (macOS)
+**Common causes and solutions:**
+
+1. **Invalid JSON syntax**
+   - Use a JSON validator: https://jsonlint.com/
+   - Common mistakes: missing commas, trailing commas, unquoted keys
+   - Example of valid JSON:
+   ```json
+   {
+     "mcpServers": {
+       "stacksagent": {
+         "command": "npx",
+         "args": ["-y", "stacks-agent-mcp"],
+         "env": {
+           "STACKS_NETWORK": "mainnet"
+         }
+       }
+     }
+   }
+   ```
+
+2. **Wrong file path (if built from source)**
+   ```bash
+   # On macOS/Linux, get the absolute path:
+   cd /path/to/stacksagent-mcp
+   pwd
+   # Copy the output and append /dist/index.js
+
+   # On Windows:
+   cd C:\path\to\stacksagent-mcp
+   cd
+   # Copy the output and append \dist\index.js
+   ```
+
+3. **Package not installed (if using npm)**
+   ```bash
+   # Verify installation
+   npm list -g stacks-agent-mcp
+
+   # Reinstall if needed
+   npm install -g stacks-agent-mcp
+   ```
+
+4. **Restart Claude Desktop completely**
+   - Quit Claude Desktop completely (don't just close the window)
+   - On macOS: Cmd+Q or right-click dock icon → Quit
+   - On Windows: Right-click system tray → Exit
+   - Wait 5 seconds, then restart
+
+5. **Check the logs**
+   - macOS: `~/Library/Logs/Claude/mcp*.log`
+   - Windows: `%APPDATA%\Claude\logs\mcp*.log`
+   - Linux: `~/.config/Claude/logs/mcp*.log`
+
+   View logs:
+   ```bash
+   # macOS/Linux
+   tail -f ~/Library/Logs/Claude/mcp*.log
+
+   # Windows (PowerShell)
+   Get-Content "$env:APPDATA\Claude\logs\mcp*.log" -Wait
+   ```
+
+### Node.js not found
+
+**Error:** `command not found: node` or `'node' is not recognized`
+
+**Solution:**
+1. Install Node.js 18+ from https://nodejs.org/
+2. Verify installation:
+   ```bash
+   node --version  # Should show v18.0.0 or higher
+   ```
+3. Restart your terminal and Claude Desktop
 
 ### "Wallet is locked" error
 
@@ -447,18 +751,48 @@ You: Unlock my wallet with password "YourPassword"
 
 Some tokens may not have price data available yet. Major tokens (STX, WELSH, USDA, sBTC) are supported.
 
+### Permission denied errors
+
+**On macOS/Linux:**
+```bash
+# If you get permission errors, try:
+sudo npm install -g stacks-agent-mcp
+
+# Or fix npm permissions (recommended):
+mkdir ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc  # or source ~/.zshrc
+```
+
+### Still having issues?
+
+1. **Verify the package is working**:
+   ```bash
+   # Test the CLI directly
+   npx stacks-agent-mcp
+   # Should start the MCP server (press Ctrl+C to exit)
+   ```
+
+2. **Check Claude Desktop is up to date**
+   - Download the latest version from https://claude.ai/download
+
+3. **Report the issue**
+   - GitHub Issues: https://github.com/kai-builder/stacksagent-mcp/issues
+   - Include: OS version, Node.js version, error logs, and your config file (remove sensitive data)
+
 ## Publishing to npm (For Maintainers)
 
-If you want to publish this package to npm:
+To publish a new version to npm:
 
-1. Update `package.json` with your details:
-   - Set `author` field
-   - Update `repository` field
-   - Ensure version is correct
+1. Ensure all changes are committed and tests pass
 
-2. Create an npm account at [npmjs.com](https://www.npmjs.com/)
+2. Update version in `package.json`:
+```bash
+npm version patch  # or minor, or major
+```
 
-3. Login to npm:
+3. Login to npm (if not already logged in):
 ```bash
 npm login
 ```
@@ -468,9 +802,14 @@ npm login
 npm publish
 ```
 
-5. Users can then install via:
+5. Push tags to GitHub:
 ```bash
-npm install -g stacksagent-mcp
+git push --tags
+```
+
+Users can install the latest version via:
+```bash
+npm install -g stacks-agent-mcp
 ```
 
 ## Contributing

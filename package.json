@@ -1,17 +1,23 @@
 {
-  "name": "stacksagent-mcp",
-  "version": "0.1.0",
-  "description": "Stacks blockchain MCP server for Claude Desktop - interact with DeFi, swaps, and stacking",
+  "name": "stacks-agent-mcp",
+  "version": "1.0.0",
+  "description": "Stacks blockchain MCP server for Claude Desktop - interact with DeFi, swaps, stacking, and Clarity smart contracts",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "stacksagent-mcp": "./dist/index.js"
+    "stacks-agent-mcp": "dist/index.js"
   },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "prepare": "npm run build",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -22,18 +28,25 @@
     "model-context-protocol",
     "stx",
     "bitcoin",
-    "web3"
+    "web3",
+    "clarity",
+    "smart-contracts",
+    "bns",
+    "stacking"
   ],
-  "author": "YOUR_NAME <your.email@example.com>",
+  "author": "kai-builder",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YOUR_USERNAME/stacksagent-mcp.git"
+    "url": "git+https://github.com/kai-builder/stacksagent-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/YOUR_USERNAME/stacksagent-mcp/issues"
+    "url": "https://github.com/kai-builder/stacksagent-mcp/issues"
   },
-  "homepage": "https://github.com/YOUR_USERNAME/stacksagent-mcp#readme",
+  "homepage": "https://github.com/kai-builder/stacksagent-mcp#readme",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@bitflowlabs/core-sdk": "^2.4.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
