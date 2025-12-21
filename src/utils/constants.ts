@@ -43,7 +43,7 @@ export const DEFAULT_CONFIG: Config = {
     alex: { enabled: true },
     velar: { enabled: true },
     bitflow: { enabled: true },
-    zest: { enabled: false },
+    zest: { enabled: true },
     granite: { enabled: false },
   },
 };

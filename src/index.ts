@@ -15,6 +15,9 @@ import { StackingService } from './services/stacking.js';
 import { PortfolioService } from './services/portfolio.js';
 import { BnsService } from './services/bns.js';
 import { ClarityService } from './services/clarity.js';
+import { ZestService } from './services/zest.js';
+import { PythService } from './services/pyth.js';
+import { BoostService } from './services/boost.js';
 import { WalletMigration } from './services/wallet-migration.js';
 import { configManager } from './utils/config.js';
 
@@ -23,6 +26,8 @@ import { marketTools } from './tools/market-tools.js';
 import { stackingAndPortfolioTools } from './tools/stacking-tools.js';
 import { bnsTools } from './tools/bns-tools.js';
 import { clarityTools } from './tools/clarity-tools.js';
+import { zestTools } from './tools/zest-tools.js';
+import { boostTools } from './tools/boost-tools.js';
 
 /**
  * Main MCP Server for Stacks blockchain operations
@@ -36,6 +41,9 @@ class StacksMCPServer {
   private portfolioService: PortfolioService;
   private bnsService: BnsService;
   private clarityService: ClarityService;
+  private zestService: ZestService;
+  private pythService: PythService;
+  private boostService: BoostService;
   private tools: Map<string, any>;
 
   constructor() {
@@ -61,6 +69,9 @@ class StacksMCPServer {
     this.portfolioService = new PortfolioService(this.walletService, config.network);
     this.bnsService = new BnsService(config.network);
     this.clarityService = new ClarityService(config.network);
+    this.zestService = new ZestService(config.network);
+    this.pythService = new PythService();
+    this.boostService = new BoostService(config.network);
 
     // Initialize tools map
     this.tools = new Map();
@@ -105,6 +116,18 @@ class StacksMCPServer {
     // Clarity tools
     const clarity = clarityTools(this.clarityService, this.walletService);
     for (const [name, tool] of Object.entries(clarity)) {
+      this.tools.set(name, tool);
+    }
+
+    // Zest Protocol tools
+    const zest = zestTools(this.zestService, this.pythService, this.walletService);
+    for (const [name, tool] of Object.entries(zest)) {
+      this.tools.set(name, tool);
+    }
+
+    // BoostBTC tools
+    const boost = boostTools(this.boostService, this.walletService);
+    for (const [name, tool] of Object.entries(boost)) {
       this.tools.set(name, tool);
     }
   }

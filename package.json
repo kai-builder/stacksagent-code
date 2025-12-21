@@ -50,6 +50,7 @@
   "dependencies": {
     "@bitflowlabs/core-sdk": "^2.4.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
+    "@pythnetwork/hermes-client": "^2.1.0",
     "@stacks/encryption": "^6.16.1",
     "@stacks/network": "^6.16.1",
     "@stacks/stacks-blockchain-api-types": "^7.12.0",
