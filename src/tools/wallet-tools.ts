@@ -1,6 +1,15 @@
 import { z } from 'zod';
 import { WalletService } from '../services/wallet.js';
 import { configManager } from '../utils/config.js';
+import { coercedBoolean } from '../utils/schema-helpers.js';
+import {
+  makeSTXTokenTransfer,
+  broadcastTransaction,
+  AnchorMode,
+} from '@stacks/transactions';
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
+import { STACKS_MAINNET_API, STACKS_TESTNET_API } from '../utils/constants.js';
+import { StacksApiClient } from '../services/stacks-api.js';
 
 export const walletTools = (walletService: WalletService) => ({
   wallet_create: {
@@ -499,6 +508,231 @@ export const walletTools = (walletService: WalletService) => ({
         return {
           success: false,
           error: error.message,
+        };
+      }
+    },
+  },
+
+  // ============================================================================
+  // STX TRANSFER
+  // ============================================================================
+
+  stx_transfer: {
+    description: 'Transfers STX to another address on mainnet or testnet',
+    parameters: z.object({
+      recipient: z.string().describe('Recipient Stacks address (SP... for mainnet, ST... for testnet)'),
+      amount: z.string().describe('Amount of STX to transfer (e.g., "0.5", "10.25")'),
+      memo: z.string().optional().describe('Optional memo text (max 34 bytes)'),
+      confirmMainnet: coercedBoolean().describe('Required confirmation for mainnet transfers (safety check)'),
+    }),
+    handler: async (args: {
+      recipient: string;
+      amount: string;
+      memo?: string;
+      confirmMainnet?: boolean;
+    }) => {
+      try {
+        // Step 1: Detect network from address prefix
+        const recipientNetwork = args.recipient.startsWith('SP') ? 'mainnet'
+                               : args.recipient.startsWith('ST') ? 'testnet'
+                               : null;
+
+        if (!recipientNetwork) {
+          return {
+            success: false,
+            error: 'Invalid Stacks address. Must start with SP (mainnet) or ST (testnet)',
+            hint: 'Example: SP2XD7HYQR4T85EW26B6HZTVK03QBW88MN37KK2MZ (mainnet) or ST2XD7HYQR4T85EW26B6HZTVK03QBW88MN3WRBSNE (testnet)',
+          };
+        }
+
+        // Step 2: Verify address exists by checking balance
+        const apiClient = new StacksApiClient(recipientNetwork);
+        try {
+          await apiClient.getStxBalance(args.recipient);
+          // If balance check succeeds, address is valid (even if balance is 0)
+        } catch (error: any) {
+          return {
+            success: false,
+            error: `Recipient address verification failed: ${error.message}`,
+            hint: 'The address may be invalid or the network may be unreachable',
+          };
+        }
+
+        // Step 3: Safety check for mainnet transfers
+        if (recipientNetwork === 'mainnet' && !args.confirmMainnet) {
+          return {
+            success: false,
+            error: 'Mainnet transfer requires confirmMainnet: true. This is a safety check to prevent accidental transfers.',
+            recommendation: [
+              'Test on testnet first if this is a new recipient',
+              'Double-check the recipient address carefully',
+              'Verify the amount is correct',
+              'Set confirmMainnet: true to proceed with mainnet transfer',
+            ],
+            transferAttempt: {
+              network: 'mainnet',
+              recipient: args.recipient,
+              amount: args.amount,
+            },
+          };
+        }
+
+        // Warning for mainnet
+        if (recipientNetwork === 'mainnet') {
+          console.error('⚠️  WARNING: Transferring STX on MAINNET. This is a real transaction!');
+        }
+
+        // Step 4: Check wallet is unlocked
+        if (!walletService.isUnlocked()) {
+          return {
+            success: false,
+            error: 'Wallet is locked. Please unlock your wallet first using wallet_unlock.',
+          };
+        }
+
+        const privateKey = walletService.getPrivateKey();
+        const senderAddress = walletService.getAddressForNetwork(recipientNetwork);
+
+        // Step 5: Parse and validate amount
+        const amountStx = parseFloat(args.amount);
+        if (isNaN(amountStx) || amountStx <= 0) {
+          return {
+            success: false,
+            error: 'Invalid amount. Must be a positive number.',
+            hint: 'Example: "0.5", "10", "100.25"',
+          };
+        }
+
+        // Convert STX to microSTX (1 STX = 1,000,000 microSTX)
+        const amountMicroStx = BigInt(Math.floor(amountStx * 1000000));
+
+        // Check sender balance
+        const senderBalance = await apiClient.getStxBalance(senderAddress);
+        const senderBalanceMicroStx = BigInt(senderBalance);
+
+        if (senderBalanceMicroStx < amountMicroStx) {
+          return {
+            success: false,
+            error: `Insufficient balance. You have ${(Number(senderBalanceMicroStx) / 1000000).toFixed(6)} STX, trying to send ${amountStx} STX`,
+            senderAddress,
+            network: recipientNetwork,
+          };
+        }
+
+        // Step 6: Validate memo length (max 34 bytes)
+        if (args.memo && Buffer.from(args.memo, 'utf-8').length > 34) {
+          return {
+            success: false,
+            error: 'Memo is too long. Maximum 34 bytes allowed.',
+          };
+        }
+
+        // Step 7: Estimate transaction fee
+        let fee: bigint;
+        try {
+          const estimatedFee = await apiClient.getFeeEstimate();
+          fee = BigInt(Math.max(estimatedFee, 200)); // Minimum 200 microSTX
+        } catch {
+          fee = BigInt(1000); // Default fallback fee
+        }
+
+        // Check total amount (transfer + fee) doesn't exceed balance
+        const totalRequired = amountMicroStx + fee;
+        if (senderBalanceMicroStx < totalRequired) {
+          return {
+            success: false,
+            error: `Insufficient balance for transfer + fee. Need ${(Number(totalRequired) / 1000000).toFixed(6)} STX total, have ${(Number(senderBalanceMicroStx) / 1000000).toFixed(6)} STX`,
+            breakdown: {
+              transfer: `${amountStx} STX`,
+              fee: `${(Number(fee) / 1000000).toFixed(6)} STX`,
+              total: `${(Number(totalRequired) / 1000000).toFixed(6)} STX`,
+            },
+          };
+        }
+
+        // Step 8: Create network object
+        const network = recipientNetwork === 'mainnet'
+          ? new StacksMainnet({ url: STACKS_MAINNET_API })
+          : new StacksTestnet({ url: STACKS_TESTNET_API });
+
+        // Build transaction options
+        const txOptions = {
+          recipient: args.recipient,
+          amount: amountMicroStx,
+          senderKey: privateKey,
+          network: network,
+          memo: args.memo || undefined,
+          fee: fee,
+          anchorMode: AnchorMode.Any,
+        };
+
+        // Create STX transfer transaction
+        const transaction = await makeSTXTokenTransfer(txOptions);
+
+        // Broadcast to network
+        const broadcastResponse = await broadcastTransaction(transaction, network);
+
+        // Check for broadcast errors
+        if ('error' in broadcastResponse) {
+          throw new Error(
+            `Broadcast failed: ${broadcastResponse.error}${
+              broadcastResponse.reason ? ` - ${broadcastResponse.reason}` : ''
+            }`
+          );
+        }
+
+        const txId = broadcastResponse.txid;
+        if (!txId) {
+          throw new Error('Transfer broadcast failed without a transaction ID');
+        }
+
+        // Success response
+        const explorerUrl = recipientNetwork === 'mainnet'
+          ? `https://explorer.hiro.so/txid/${txId}?chain=mainnet`
+          : `https://explorer.hiro.so/txid/${txId}?chain=testnet`;
+
+        return {
+          success: true,
+          txId,
+          network: recipientNetwork,
+          transfer: {
+            from: senderAddress,
+            to: args.recipient,
+            amount: `${amountStx} STX`,
+            fee: `${(Number(fee) / 1000000).toFixed(6)} STX`,
+            memo: args.memo || null,
+          },
+          explorerUrl,
+          message: `Successfully transferred ${amountStx} STX to ${args.recipient}`,
+          estimatedConfirmationTime: 'Transactions typically confirm in 10-30 minutes on Stacks',
+        };
+
+      } catch (error: any) {
+        // Get sender address for error reporting (if available)
+        let senderAddress = 'unknown';
+        try {
+          const recipientNetwork = args.recipient.startsWith('SP') ? 'mainnet' : 'testnet';
+          senderAddress = walletService.getAddressForNetwork(recipientNetwork);
+        } catch {
+          // Ignore if we can't get sender address
+        }
+
+        return {
+          success: false,
+          error: error.message,
+          transferAttempt: {
+            from: senderAddress,
+            to: args.recipient,
+            amount: args.amount,
+            network: args.recipient.startsWith('SP') ? 'mainnet' : 'testnet',
+          },
+          troubleshooting: [
+            'Verify you have sufficient STX balance for the transfer + fees',
+            'Check that the recipient address is correct',
+            'Ensure your wallet is unlocked',
+            'Verify network connectivity',
+            'For testnet: Get free STX from https://explorer.hiro.so/sandbox/faucet?chain=testnet',
+          ],
         };
       }
     },
