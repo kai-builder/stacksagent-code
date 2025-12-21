@@ -39,7 +39,7 @@ export const marketTools = (
     description: 'Gets list of tokens with metrics (trending, new, or by volume)',
     parameters: z.object({
       filter: z.enum(['trending', 'new', 'volume']).optional().describe('Filter for token list'),
-      limit: z.number().optional().default(10).describe('Maximum number of tokens to return'),
+      limit: z.coerce.number().optional().default(10).describe('Maximum number of tokens to return'),
     }),
     handler: async (args: { filter?: string; limit?: number }) => {
       try {
@@ -74,7 +74,7 @@ export const marketTools = (
     description: 'Gets liquidity pools with APY, TVL, and volume data',
     parameters: z.object({
       protocol: z.string().optional().describe('Filter by protocol (alex, velar, bitflow)'),
-      limit: z.number().optional().describe('Maximum number of pools to return (default: 15)'),
+      limit: z.coerce.number().optional().describe('Maximum number of pools to return (default: 15)'),
     }),
     handler: async (args: { protocol?: string; limit?: number }) => {
       try {
@@ -151,7 +151,7 @@ export const marketTools = (
       fromToken: z.string().describe('Token to swap from'),
       toToken: z.string().describe('Token to swap to'),
       amount: z.string().describe('Amount to swap'),
-      slippage: z.number().optional().describe('Slippage tolerance in percent (default: 0.5)'),
+      slippage: z.coerce.number().optional().describe('Slippage tolerance in percent (default: 0.5)'),
     }),
     handler: async (args: {
       fromToken: string;

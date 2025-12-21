@@ -167,7 +167,7 @@ export const bnsTools = (bnsService: BnsService) => ({
   bns_get_name_from_id: {
     description: 'Gets the BNS name from a token ID',
     parameters: z.object({
-      tokenId: z.number().describe('NFT token ID'),
+      tokenId: z.coerce.number().describe('NFT token ID'),
     }),
     handler: async (args: { tokenId: number }) => {
       try {

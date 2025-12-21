@@ -72,7 +72,7 @@ export const stackingAndPortfolioTools = (
     description: 'Stacks STX to earn Bitcoin rewards (locks STX for specified cycles)',
     parameters: z.object({
       amount: z.string().describe('Amount of STX to stack'),
-      cycles: z.number().describe('Number of cycles to stack (1-12)'),
+      cycles: z.coerce.number().describe('Number of cycles to stack (1-12)'),
       poxAddress: z.string().describe('Bitcoin address to receive rewards'),
     }),
     handler: async (args: { amount: string; cycles: number; poxAddress: string }) => {
@@ -204,7 +204,7 @@ export const stackingAndPortfolioTools = (
     description: 'Gets recent transaction history for an address',
     parameters: z.object({
       address: z.string().optional().describe('Address to check (defaults to current wallet)'),
-      limit: z.number().optional().default(20).describe('Number of transactions to fetch'),
+      limit: z.coerce.number().optional().default(20).describe('Number of transactions to fetch'),
     }),
     handler: async (args: { address?: string; limit?: number }) => {
       try {
@@ -236,7 +236,7 @@ export const stackingAndPortfolioTools = (
     description: 'Gets portfolio value history over time with P&L',
     parameters: z.object({
       address: z.string().describe('Address to analyze'),
-      days: z.number().default(30).describe('Number of days of history'),
+      days: z.coerce.number().default(30).describe('Number of days of history'),
     }),
     handler: async (args: { address: string; days: number }) => {
       try {

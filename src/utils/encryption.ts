@@ -1,23 +1,24 @@
-import { scrypt, randomBytes, createCipheriv, createDecipheriv, createHash } from 'crypto';
-import { promisify } from 'util';
+import { scryptSync, randomBytes, createCipheriv, createDecipheriv, createHash } from 'crypto';
 import { EncryptedKeystore } from '../types/index.js';
 import { SCRYPT_PARAMS } from './constants.js';
-
-const scryptAsync = promisify(scrypt);
 
 /**
  * Encrypts a private key using scrypt + AES-256-GCM
  */
-export async function encryptPrivateKey(
+export function encryptPrivateKey(
   privateKey: string,
   password: string
-): Promise<EncryptedKeystore> {
+): EncryptedKeystore {
   // Generate random salt and IV
   const salt = randomBytes(32);
   const iv = randomBytes(16);
 
-  // Derive key using scrypt
-  const derivedKey = (await scryptAsync(password, salt, SCRYPT_PARAMS.dklen)) as Buffer;
+  // Derive key using scrypt with proper parameters
+  const derivedKey = scryptSync(password, salt, SCRYPT_PARAMS.dklen, {
+    cost: SCRYPT_PARAMS.N,
+    blockSize: SCRYPT_PARAMS.r,
+    parallelization: SCRYPT_PARAMS.p,
+  });
 
   // Encrypt the private key
   const cipher = createCipheriv('aes-256-gcm', derivedKey, iv);
@@ -60,15 +61,19 @@ export async function encryptPrivateKey(
 /**
  * Decrypts an encrypted keystore using password
  */
-export async function decryptPrivateKey(
+export function decryptPrivateKey(
   keystore: EncryptedKeystore,
   password: string
-): Promise<string> {
+): string {
   const { crypto } = keystore;
 
-  // Derive key using scrypt
+  // Derive key using scrypt with proper parameters
   const salt = Buffer.from(crypto.kdfparams.salt, 'hex');
-  const derivedKey = (await scryptAsync(password, salt, crypto.kdfparams.dklen)) as Buffer;
+  const derivedKey = scryptSync(password, salt, crypto.kdfparams.dklen, {
+    cost: crypto.kdfparams.n,
+    blockSize: crypto.kdfparams.r,
+    parallelization: crypto.kdfparams.p,
+  });
 
   // Verify MAC
   const combined = Buffer.from(crypto.ciphertext, 'hex');

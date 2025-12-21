@@ -7,22 +7,26 @@ export const walletTools = (walletService: WalletService) => ({
     description: 'Creates a new Stacks wallet with encrypted keystore',
     parameters: z.object({
       password: z.string().describe('Password to encrypt the wallet keystore'),
+      label: z.string().optional().describe('Optional label for the wallet'),
     }),
-    handler: async (args: { password: string }) => {
+    handler: async (args: { password: string; label?: string }) => {
       try {
         await configManager.ensureConfigDir();
-        const result = await walletService.createWallet(args.password);
+        const result = await walletService.createWallet(args.password, args.label);
 
         const config = configManager.get();
+        const account0 = result.accounts[0];
 
         return {
           success: true,
-          mainnetAddress: result.mainnetAddress,
-          testnetAddress: result.testnetAddress,
+          walletId: result.walletId,
+          mainnetAddress: account0.mainnetAddress,
+          testnetAddress: account0.testnetAddress,
           currentNetwork: config.network,
-          activeAddress: config.network === 'mainnet' ? result.mainnetAddress : result.testnetAddress,
+          activeAddress: config.network === 'mainnet' ? account0.mainnetAddress : account0.testnetAddress,
           keystorePath: result.keystorePath,
           mnemonic: result.mnemonic,
+          accountsCreated: result.accounts.length,
           message: 'Wallet created successfully. IMPORTANT: Save your mnemonic phrase securely!',
         };
       } catch (error: any) {
@@ -35,28 +39,29 @@ export const walletTools = (walletService: WalletService) => ({
   },
 
   wallet_import: {
-    description: 'Imports a wallet from mnemonic phrase or private key',
+    description: 'Imports a wallet from mnemonic phrase',
     parameters: z.object({
-      mnemonicOrPrivateKey: z.string().describe('24-word mnemonic phrase or 64-character hex private key'),
+      mnemonic: z.string().describe('24-word mnemonic phrase'),
       password: z.string().describe('Password to encrypt the wallet keystore'),
+      label: z.string().optional().describe('Optional label for the wallet'),
     }),
-    handler: async (args: { mnemonicOrPrivateKey: string; password: string }) => {
+    handler: async (args: { mnemonic: string; password: string; label?: string }) => {
       try {
         await configManager.ensureConfigDir();
-        const result = await walletService.importWallet(
-          args.mnemonicOrPrivateKey,
-          args.password
-        );
+        const result = await walletService.importWallet(args.mnemonic, args.password, args.label);
 
         const config = configManager.get();
+        const account0 = result.accounts[0];
 
         return {
           success: true,
-          mainnetAddress: result.mainnetAddress,
-          testnetAddress: result.testnetAddress,
+          walletId: result.walletId,
+          mainnetAddress: account0.mainnetAddress,
+          testnetAddress: account0.testnetAddress,
           currentNetwork: config.network,
-          activeAddress: config.network === 'mainnet' ? result.mainnetAddress : result.testnetAddress,
+          activeAddress: config.network === 'mainnet' ? account0.mainnetAddress : account0.testnetAddress,
           keystorePath: result.keystorePath,
+          accountsCreated: result.accounts.length,
           message: 'Wallet imported successfully',
         };
       } catch (error: any) {
@@ -194,6 +199,301 @@ export const walletTools = (walletService: WalletService) => ({
           walletExists: exists,
           isUnlocked: unlocked,
           address,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  // ============================================================================
+  // MULTI-WALLET MANAGEMENT
+  // ============================================================================
+
+  wallet_list: {
+    description: 'List all wallets with their metadata',
+    parameters: z.object({}),
+    handler: async () => {
+      try {
+        const wallets = await walletService.listWallets();
+        const activeWallet = await walletService.getActiveWallet();
+
+        return {
+          success: true,
+          wallets: wallets.map((w) => ({
+            id: w.id,
+            label: w.label,
+            accountCount: w.accountCount,
+            createdAt: w.createdAt,
+            lastUsed: w.lastUsed,
+            isActive: activeWallet?.id === w.id,
+          })),
+          activeWalletId: activeWallet?.id || null,
+          totalWallets: wallets.length,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  wallet_switch: {
+    description: 'Switch to a different wallet',
+    parameters: z.object({
+      walletId: z.string().describe('Wallet ID to switch to'),
+      accountIndex: z.coerce.number().optional().default(0).describe('Account index to use (default: 0)'),
+    }),
+    handler: async (args: { walletId: string; accountIndex?: number }) => {
+      try {
+        await walletService.switchWallet(args.walletId, args.accountIndex || 0);
+
+        return {
+          success: true,
+          message: `Switched to wallet ${args.walletId}, account ${args.accountIndex || 0}`,
+          note: 'You need to unlock the wallet to use it for transactions',
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  wallet_delete: {
+    description: 'Delete a wallet permanently',
+    parameters: z.object({
+      walletId: z.string().describe('Wallet ID to delete'),
+      confirm: z.boolean().describe('Must be true to confirm deletion'),
+    }),
+    handler: async (args: { walletId: string; confirm: boolean }) => {
+      try {
+        if (!args.confirm) {
+          return {
+            success: false,
+            error: 'Deletion requires confirm: true',
+            warning: 'This action is irreversible. All accounts in this wallet will be deleted.',
+          };
+        }
+
+        await walletService.deleteWallet(args.walletId);
+
+        return {
+          success: true,
+          message: `Wallet ${args.walletId} deleted successfully`,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  wallet_export: {
+    description: 'Export wallet mnemonic phrase (DANGEROUS - keep secret!)',
+    parameters: z.object({
+      walletId: z.string().optional().describe('Wallet ID to export (defaults to active wallet)'),
+      password: z.string().describe('Wallet password'),
+    }),
+    handler: async (args: { walletId?: string; password: string }) => {
+      try {
+        const activeWallet = await walletService.getActiveWallet();
+        const targetWalletId = args.walletId || activeWallet?.id;
+
+        if (!targetWalletId) {
+          return {
+            success: false,
+            error: 'No wallet specified and no active wallet found',
+          };
+        }
+
+        const mnemonic = await walletService.exportWallet(targetWalletId, args.password);
+
+        return {
+          success: true,
+          mnemonic,
+          warning: 'NEVER share this mnemonic with anyone! Anyone with this phrase can access your funds.',
+          recommendation: 'Store this phrase securely offline.',
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  wallet_rename: {
+    description: 'Rename a wallet',
+    parameters: z.object({
+      walletId: z.string().optional().describe('Wallet ID to rename (defaults to active wallet)'),
+      newLabel: z.string().describe('New label for the wallet'),
+    }),
+    handler: async (args: { walletId?: string; newLabel: string }) => {
+      try {
+        const activeWallet = await walletService.getActiveWallet();
+        const targetWalletId = args.walletId || activeWallet?.id;
+
+        if (!targetWalletId) {
+          return {
+            success: false,
+            error: 'No wallet specified and no active wallet found',
+          };
+        }
+
+        await walletService.renameWallet(targetWalletId, args.newLabel);
+
+        return {
+          success: true,
+          message: `Wallet renamed to '${args.newLabel}'`,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  // ============================================================================
+  // MULTI-ACCOUNT MANAGEMENT
+  // ============================================================================
+
+  account_create: {
+    description: 'Create a new account in the active wallet',
+    parameters: z.object({
+      label: z.string().optional().describe('Optional label for the account (e.g., "Trading", "Savings")'),
+    }),
+    handler: async (args: { label?: string }) => {
+      try {
+        const account = await walletService.createAccount(args.label);
+
+        const config = configManager.get();
+
+        return {
+          success: true,
+          account: {
+            index: account.index,
+            label: account.label,
+            mainnetAddress: account.mainnetAddress,
+            testnetAddress: account.testnetAddress,
+            derivationPath: account.derivationPath,
+          },
+          activeAddress: config.network === 'mainnet' ? account.mainnetAddress : account.testnetAddress,
+          message: `Account '${account.label}' created successfully`,
+          note: 'Use account_switch to make this account active for transactions',
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  account_list: {
+    description: 'List all accounts in a wallet',
+    parameters: z.object({
+      walletId: z.string().optional().describe('Wallet ID (defaults to active wallet)'),
+    }),
+    handler: async (args: { walletId?: string }) => {
+      try {
+        const accounts = await walletService.listAccounts(args.walletId);
+        const activeAccount = await walletService.getActiveAccount();
+
+        const config = configManager.get();
+
+        return {
+          success: true,
+          accounts: accounts.map((a) => ({
+            index: a.index,
+            label: a.label,
+            mainnetAddress: a.mainnetAddress,
+            testnetAddress: a.testnetAddress,
+            activeAddress: config.network === 'mainnet' ? a.mainnetAddress : a.testnetAddress,
+            derivationPath: a.derivationPath,
+            isActive: activeAccount?.index === a.index,
+          })),
+          activeAccountIndex: activeAccount?.index || null,
+          totalAccounts: accounts.length,
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  account_switch: {
+    description: 'Switch to a different account in the active wallet',
+    parameters: z.object({
+      accountIndex: z.coerce.number().describe('Account index to switch to (0, 1, 2, ...)'),
+    }),
+    handler: async (args: { accountIndex: number }) => {
+      try {
+        await walletService.switchAccount(args.accountIndex);
+        const activeAccount = await walletService.getActiveAccount();
+
+        if (!activeAccount) {
+          return {
+            success: false,
+            error: 'Failed to retrieve active account after switch',
+          };
+        }
+
+        const config = configManager.get();
+        const activeAddress = config.network === 'mainnet'
+          ? activeAccount.mainnetAddress
+          : activeAccount.testnetAddress;
+
+        return {
+          success: true,
+          account: {
+            index: activeAccount.index,
+            label: activeAccount.label,
+            mainnetAddress: activeAccount.mainnetAddress,
+            testnetAddress: activeAccount.testnetAddress,
+            activeAddress,
+          },
+          message: `Switched to account '${activeAccount.label}' (index ${activeAccount.index})`,
+          note: 'If wallet is unlocked, this account is now active for transactions',
+        };
+      } catch (error: any) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    },
+  },
+
+  account_rename: {
+    description: 'Rename an account',
+    parameters: z.object({
+      accountIndex: z.coerce.number().describe('Account index to rename'),
+      newLabel: z.string().describe('New label for the account'),
+    }),
+    handler: async (args: { accountIndex: number; newLabel: string }) => {
+      try {
+        await walletService.renameAccount(args.accountIndex, args.newLabel);
+
+        return {
+          success: true,
+          message: `Account ${args.accountIndex} renamed to '${args.newLabel}'`,
         };
       } catch (error: any) {
         return {

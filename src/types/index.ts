@@ -115,12 +115,20 @@ export interface Transaction {
   description: string;
 }
 
+export interface ActiveSession {
+  walletId: string | null;
+  accountIndex: number;
+  network: 'mainnet' | 'testnet';
+}
+
 export interface Config {
   network: 'mainnet' | 'testnet';
   wallet: {
-    keystorePath: string;
+    keystorePath: string; // DEPRECATED - kept for backward compatibility
+    walletsDir?: string; // NEW - directory for multi-wallet keystores
     autoLockMinutes: number;
   };
+  activeSession?: ActiveSession; // NEW - track active wallet/account
   rpc: {
     primary: string;
     fallback: string;
@@ -261,4 +269,54 @@ export interface ContractGenerationOptions {
   features?: string[];
   includeTests?: boolean;
   includeComments?: boolean;
+}
+
+// Multi-wallet types
+export interface Account {
+  index: number; // BIP44 account index (0, 1, 2, ...)
+  label: string; // User-friendly name ("Personal", "Trading", etc.)
+  mainnetAddress: string; // SP... address
+  testnetAddress: string; // ST... address
+  createdAt: string; // ISO timestamp
+  derivationPath: string; // "m/44'/5757'/0'/0/0"
+}
+
+export interface WalletMetadata {
+  id: string; // UUID v4
+  label: string; // User-friendly name ("Main Wallet", "Hardware Backup", etc.)
+  createdAt: string; // ISO timestamp
+  lastUsed: string; // ISO timestamp
+  accountCount: number; // Number of derived accounts
+  defaultAccountIndex: number; // Which account is default (usually 0)
+  keystoreFileName: string; // "wallet-{uuid}.enc"
+}
+
+export interface WalletIndex {
+  version: number; // Index schema version (1)
+  wallets: WalletMetadata[];
+  activeWalletId: string | null; // Currently active wallet UUID
+  migrated: boolean; // Whether legacy wallet.enc was migrated
+  migratedAt?: string; // When migration occurred
+}
+
+export interface EncryptedWalletKeystore {
+  version: number; // Schema version (2 for multi-account)
+  walletId: string; // UUID matching WalletMetadata
+  crypto: {
+    cipher: string; // "aes-256-gcm"
+    ciphertext: string; // Encrypted mnemonic (not private key!)
+    cipherparams: {
+      iv: string;
+    };
+    kdf: string; // "scrypt"
+    kdfparams: {
+      salt: string;
+      n: number;
+      r: number;
+      p: number;
+      dklen: number;
+    };
+    mac: string; // Integrity check
+  };
+  accounts: Account[]; // Array of derived accounts
 }
