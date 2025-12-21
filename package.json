@@ -1,6 +1,6 @@
 {
   "name": "stacks-agent-mcp",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Stacks blockchain MCP server for Claude Desktop - interact with DeFi, swaps, stacking, and Clarity smart contracts",
   "main": "dist/index.js",
   "type": "module",
