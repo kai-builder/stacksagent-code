@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ClarityService } from '../services/clarity.js';
 import { ContractGenerationOptions } from '../types/index.js';
 import { WalletService } from '../services/wallet.js';
+import { coercedBoolean } from '../utils/schema-helpers.js';
 
 export const clarityTools = (clarityService: ClarityService, walletService: WalletService) => ({
   clarity_write_contract: {
@@ -26,16 +27,10 @@ export const clarityTools = (clarityService: ClarityService, walletService: Wall
         .describe(
           'Additional features to include (e.g., ["pausable", "mintable", "burnable"] for tokens)'
         ),
-      includeTests: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe('Generate test cases alongside contract (future feature)'),
-      includeComments: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe('Include detailed comments in generated code'),
+      includeTests: coercedBoolean(false).describe(
+        'Generate test cases alongside contract (future feature)'
+      ),
+      includeComments: coercedBoolean(true).describe('Include detailed comments in generated code'),
     }),
     handler: async (args: {
       requirements: string;
@@ -95,11 +90,9 @@ export const clarityTools = (clarityService: ClarityService, walletService: Wall
       contractCode: z
         .string()
         .describe('The Clarity contract code to audit (full .clar file content as a string)'),
-      includeOptimizations: z
-        .boolean()
-        .optional()
-        .default(true)
-        .describe('Include gas optimization suggestions in the report'),
+      includeOptimizations: coercedBoolean(true).describe(
+        'Include gas optimization suggestions in the report'
+      ),
       severityThreshold: z
         .enum(['critical', 'high', 'medium', 'low', 'informational'])
         .optional()
@@ -228,12 +221,9 @@ export const clarityTools = (clarityService: ClarityService, walletService: Wall
         .describe(
           'Target network for deployment. ALWAYS use "testnet" for testing first, only use "mainnet" for production after thorough testing.'
         ),
-      confirmMainnet: z
-        .boolean()
-        .optional()
-        .describe(
-          'Required confirmation for mainnet deployment. Must be true to deploy to mainnet. This is a safety check.'
-        ),
+      confirmMainnet: coercedBoolean().describe(
+        'Required confirmation for mainnet deployment. Must be true to deploy to mainnet. This is a safety check.'
+      ),
     }),
     handler: async (args: {
       contractName: string;
