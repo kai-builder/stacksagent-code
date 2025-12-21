@@ -162,4 +162,120 @@ export class StackingService {
 
     return totalReward.toFixed(8);
   }
+
+  /**
+   * Gets detailed PoX information including current and next cycle data
+   */
+  async getDetailedPoxInfo(): Promise<any> {
+    try {
+      const poxInfo = await this.apiClient.getPoxInfo();
+      return poxInfo;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch detailed PoX info: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets historical stacking cycles
+   */
+  async getStackingCycles(limit: number = 10, offset: number = 0): Promise<any> {
+    try {
+      const cycles = await this.apiClient.getStackingCycles(limit, offset);
+      return cycles;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch stacking cycles: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets signers for a specific cycle
+   */
+  async getSigners(cycleId: number, limit: number = 50, offset: number = 0): Promise<any> {
+    try {
+      const signers = await this.apiClient.getSigners(cycleId, limit, offset);
+      return signers;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch signers for cycle ${cycleId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets pool delegations for a specific pool address
+   */
+  async getPoolDelegations(poolAddress: string, limit: number = 50, offset: number = 0): Promise<any> {
+    try {
+      const delegations = await this.apiClient.getPoolDelegations(poolAddress, limit, offset);
+      return delegations;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch pool delegations: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets recent burnchain rewards (BTC rewards)
+   */
+  async getBurnchainRewards(limit: number = 20, offset: number = 0): Promise<any> {
+    try {
+      const rewards = await this.apiClient.getBurnchainRewards(limit, offset);
+      return rewards;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch burnchain rewards: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets burnchain rewards for a specific BTC address
+   */
+  async getBurnchainRewardsByAddress(btcAddress: string, limit: number = 20): Promise<any> {
+    try {
+      const rewards = await this.apiClient.getBurnchainRewardsByAddress(btcAddress, limit);
+      return rewards;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch burnchain rewards for address: ${error.message}`);
+    }
+  }
+
+  /**
+   * Calculates cycle progress and block heights
+   */
+  calculateCycleProgress(poxInfo: any): any {
+    const totalCycleBlocks = poxInfo.prepare_phase_block_length + poxInfo.reward_phase_block_length;
+    const blocksCompleted = poxInfo.next_cycle?.blocks_until_reward_phase
+      ? totalCycleBlocks - poxInfo.next_cycle.blocks_until_reward_phase
+      : 0;
+    const currentCycleProgress = totalCycleBlocks > 0 ? (blocksCompleted / totalCycleBlocks) * 100 : 0;
+    const blocksRemaining = poxInfo.next_cycle?.blocks_until_reward_phase || 0;
+    const estimatedHoursRemaining = (blocksRemaining * 10) / 60;
+
+    const currentCycleStartBlock = poxInfo.current_cycle?.id
+      ? poxInfo.first_burnchain_block_height + (poxInfo.current_cycle.id * totalCycleBlocks)
+      : 0;
+
+    return {
+      totalCycleBlocks,
+      blocksCompleted,
+      currentCycleProgress,
+      blocksRemaining,
+      estimatedHoursRemaining,
+      currentCycleStartBlock,
+      rewardsPhaseStartBlock: currentCycleStartBlock + poxInfo.prepare_phase_block_length,
+      cycleEndBlock: poxInfo.next_cycle?.reward_phase_start_block_height || 0,
+    };
+  }
+
+  /**
+   * Searches for stacking positions for an address using Stacking Tracker API
+   * Returns both direct stacking and pool delegation positions
+   */
+  async searchStackingPositions(address: string): Promise<any[]> {
+    try {
+      // Use the Stacking Tracker API to get positions
+      const positions = await this.apiClient.getStackingPositions(address);
+
+      // The API returns an array of positions or empty array if none found
+      return Array.isArray(positions) ? positions : [];
+    } catch (error: any) {
+      throw new Error(`Failed to search stacking positions: ${error.message}`);
+    }
+  }
 }

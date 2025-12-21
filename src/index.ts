@@ -16,6 +16,7 @@ import { PortfolioService } from './services/portfolio.js';
 import { BnsService } from './services/bns.js';
 import { ClarityService } from './services/clarity.js';
 import { ZestService } from './services/zest.js';
+import { SwapService } from './services/swap.js';
 import { PythService } from './services/pyth.js';
 import { BoostService } from './services/boost.js';
 import { WalletMigration } from './services/wallet-migration.js';
@@ -42,6 +43,7 @@ class StacksMCPServer {
   private bnsService: BnsService;
   private clarityService: ClarityService;
   private zestService: ZestService;
+  private swapService: SwapService;
   private pythService: PythService;
   private boostService: BoostService;
   private tools: Map<string, any>;
@@ -70,6 +72,7 @@ class StacksMCPServer {
     this.bnsService = new BnsService(config.network);
     this.clarityService = new ClarityService(config.network);
     this.zestService = new ZestService(config.network);
+    this.swapService = new SwapService(config.network);
     this.pythService = new PythService();
     this.boostService = new BoostService(config.network);
 
@@ -92,7 +95,7 @@ class StacksMCPServer {
     }
 
     // Market and DEX tools
-    const market = marketTools(this.priceService, this.dexService, this.walletService);
+    const market = marketTools(this.priceService, this.dexService, this.swapService, this.walletService);
     for (const [name, tool] of Object.entries(market)) {
       this.tools.set(name, tool);
     }
@@ -101,7 +104,8 @@ class StacksMCPServer {
     const stacking = stackingAndPortfolioTools(
       this.stackingService,
       this.portfolioService,
-      this.walletService
+      this.walletService,
+      this.bnsService
     );
     for (const [name, tool] of Object.entries(stacking)) {
       this.tools.set(name, tool);

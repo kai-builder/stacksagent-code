@@ -1,12 +1,15 @@
 import { z } from 'zod';
 import { PriceService } from '../services/price.js';
 import { DexService } from '../services/dex.js';
+import { SwapService } from '../services/swap.js';
 import { WalletService } from '../services/wallet.js';
 import { configManager } from '../utils/config.js';
+import { resolveToken } from '../utils/token-resolver.js';
 
 export const marketTools = (
   priceService: PriceService,
   dexService: DexService,
+  swapService: SwapService,
   walletService: WalletService
 ) => ({
   market_get_price: {
@@ -146,11 +149,11 @@ export const marketTools = (
   },
 
   dex_swap: {
-    description: 'Executes a token swap on a DEX. Requires wallet to be unlocked.',
+    description: 'Executes a token swap on a DEX (Bitflow, Alex, Velar, or Faktory). Automatically finds the best rate across all DEXes. Requires wallet to be unlocked.',
     parameters: z.object({
-      fromToken: z.string().describe('Token to swap from'),
-      toToken: z.string().describe('Token to swap to'),
-      amount: z.string().describe('Amount to swap'),
+      fromToken: z.string().describe('Token to swap from (symbol or contract ID, e.g., "STX", "WELSH")'),
+      toToken: z.string().describe('Token to swap to (symbol or contract ID, e.g., "WELSH", "sBTC")'),
+      amount: z.string().describe('Amount to swap (human-readable, e.g., "0.015" for 0.015 STX)'),
       slippage: z.coerce.number().optional().describe('Slippage tolerance in percent (default: 0.5)'),
     }),
     handler: async (args: {
@@ -181,29 +184,77 @@ export const marketTools = (
         const privateKey = walletService.getPrivateKey();
         const address = walletService.getAddress();
 
-        const result = await dexService.executeSwap(
-          args.fromToken,
-          args.toToken,
-          args.amount,
-          slippage,
+        // Step 1: Resolve tokens to contract IDs
+        const fromTokenInfo = resolveToken(args.fromToken);
+        const toTokenInfo = resolveToken(args.toToken);
+
+        console.log(`[dex_swap] Resolved tokens:`, {
+          from: fromTokenInfo,
+          to: toTokenInfo,
+        });
+
+        // Step 2: Get quotes from all AMMs
+        const amountNum = parseFloat(args.amount);
+        if (!Number.isFinite(amountNum) || amountNum <= 0) {
+          return {
+            success: false,
+            error: `Invalid amount: ${args.amount}`,
+          };
+        }
+
+        console.log(`[dex_swap] Getting quotes for ${amountNum} ${fromTokenInfo.symbol} → ${toTokenInfo.symbol}`);
+
+        const quotes = await swapService.getAllQuotes(
+          fromTokenInfo.contractId,
+          toTokenInfo.contractId,
+          amountNum
+        );
+
+        if (quotes.length === 0) {
+          return {
+            success: false,
+            error: `No swap routes available for ${fromTokenInfo.symbol} → ${toTokenInfo.symbol}. Try a different pair or amount.`,
+          };
+        }
+
+        // Step 3: Select best quote (highest output)
+        const bestQuote = quotes.reduce((best, current) =>
+          current.amountOut > best.amountOut ? current : best
+        );
+
+        console.log(`[dex_swap] Best quote from ${bestQuote.amm}: ${bestQuote.amountOut.toFixed(6)} ${toTokenInfo.symbol}`);
+        console.log(`[dex_swap] All quotes:`, quotes.map(q => `${q.amm}: ${q.amountOut.toFixed(6)}`));
+
+        // Step 4: Execute swap
+        const result = await swapService.executeSwap(
+          bestQuote,
+          address,
           privateKey,
-          address
+          slippage
         );
 
         return {
           success: true,
-          txHash: result.txHash,
-          status: result.status,
+          txId: result.txId,
+          amm: bestQuote.amm,
           swap: {
-            from: `${result.fromAmount} ${result.fromToken}`,
-            to: `${result.toAmount} ${result.toToken}`,
+            from: `${amountNum} ${fromTokenInfo.symbol}`,
+            to: `~${bestQuote.amountOut.toFixed(6)} ${toTokenInfo.symbol}`,
+            rate: `1 ${fromTokenInfo.symbol} = ${(bestQuote.amountOut / amountNum).toFixed(6)} ${toTokenInfo.symbol}`,
           },
-          message: `Swap submitted. Transaction: ${result.txHash}`,
+          allQuotes: quotes.map(q => ({
+            amm: q.amm,
+            amountOut: q.amountOut.toFixed(6),
+            rate: `1 ${fromTokenInfo.symbol} = ${(q.amountOut / amountNum).toFixed(6)} ${toTokenInfo.symbol}`,
+          })),
+          message: `Swap executed on ${bestQuote.amm}. Expected output: ~${bestQuote.amountOut.toFixed(6)} ${toTokenInfo.symbol}. Transaction: ${result.txId}`,
         };
       } catch (error: any) {
+        console.error('[dex_swap] Error:', error);
         return {
           success: false,
-          error: error.message,
+          error: error.message || 'Swap failed',
+          details: error.stack,
         };
       }
     },

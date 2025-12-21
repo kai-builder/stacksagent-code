@@ -4,10 +4,10 @@
  */
 
 import { ZestService } from './zest.js';
-import { DexService } from './dex.js';
+import { SwapService } from './swap.js';
 import { PythService } from './pyth.js';
 import { StacksApiClient } from './stacks-api.js';
-import { ZEST_PARAMS, ZestBorrowAsset } from '../utils/zest-constants.js';
+import { ZEST_PARAMS, ZestBorrowAsset, ZEST_ASSETS } from '../utils/zest-constants.js';
 
 export interface BoostBtcLeverageParams {
   sbtcAmount: string; // Amount of sBTC to use as collateral
@@ -52,7 +52,7 @@ export interface BoostBtcDeleverageResult {
 
 export class BoostService {
   private zestService: ZestService;
-  private dexService: DexService;
+  private swapService: SwapService;
   private pythService: PythService;
   private apiClient: StacksApiClient;
   private network: 'mainnet' | 'testnet';
@@ -60,7 +60,7 @@ export class BoostService {
   constructor(network: 'mainnet' | 'testnet' = 'mainnet') {
     this.network = network;
     this.zestService = new ZestService(network);
-    this.dexService = new DexService(network);
+    this.swapService = new SwapService(network);
     this.pythService = new PythService();
     this.apiClient = new StacksApiClient(network);
   }
@@ -117,13 +117,35 @@ export class BoostService {
 
       // Step 3: Swap stablecoin to sBTC
       console.log(`[BoostBTC] Step 3/3: Swapping ${stablecoin} to sBTC...`);
-      const swapResult = await this.dexService.executeSwap(
-        stablecoin.toUpperCase(),
-        'SBTC',
-        borrowAmountUsd.toString(),
-        slippage,
+
+      // Get the stablecoin and sBTC contract IDs
+      const stablecoinContractId = ZEST_ASSETS[stablecoin].token;
+      const sbtcContractId = ZEST_ASSETS.sbtc.token;
+
+      // Get quotes from all AMMs
+      const quotes = await this.swapService.getAllQuotes(
+        stablecoinContractId,
+        sbtcContractId,
+        borrowAmountUsd
+      );
+
+      if (quotes.length === 0) {
+        throw new Error('No swap routes available for stablecoin to sBTC');
+      }
+
+      // Select best quote (highest output amount)
+      const bestQuote = quotes.reduce((best, current) =>
+        current.amountOut > best.amountOut ? current : best
+      );
+
+      console.log(`[BoostBTC] Using ${bestQuote.amm} for swap: ${borrowAmountUsd} ${stablecoin} → ${bestQuote.amountOut.toFixed(8)} sBTC`);
+
+      // Execute the swap
+      const swapResult = await this.swapService.executeSwap(
+        bestQuote,
+        senderAddress,
         senderKey,
-        senderAddress
+        slippage
       );
 
       // Calculate final position
@@ -143,7 +165,7 @@ export class BoostService {
         transactions: {
           supply: { txId: supplyResult.txId },
           borrow: { txId: borrowResult.txId },
-          swap: { txId: swapResult.txHash },
+          swap: { txId: swapResult.txId },
         },
         position: {
           collateral: params.sbtcAmount,
@@ -175,16 +197,36 @@ export class BoostService {
     try {
       // Step 1: Swap sBTC in wallet to stablecoin to repay debt
       console.log(`[BoostBTC] Step 1/3: Swapping ${walletSbtc} sBTC to ${debtAsset}...`);
-      const swapResult = await this.dexService.executeSwap(
-        'SBTC',
-        debtAsset.toUpperCase(),
-        walletSbtc,
-        0.5,
-        senderKey,
-        senderAddress
+
+      const sbtcContractId = ZEST_ASSETS.sbtc.token;
+      const debtAssetContractId = ZEST_ASSETS[debtAsset].token;
+
+      // Get quotes for sBTC → stablecoin
+      const quotes = await this.swapService.getAllQuotes(
+        sbtcContractId,
+        debtAssetContractId,
+        parseFloat(walletSbtc)
       );
 
-      await this.waitForConfirmation(swapResult.txHash);
+      if (quotes.length === 0) {
+        throw new Error('No swap routes available for sBTC to stablecoin');
+      }
+
+      // Select best quote
+      const bestQuote = quotes.reduce((best, current) =>
+        current.amountOut > best.amountOut ? current : best
+      );
+
+      console.log(`[BoostBTC] Using ${bestQuote.amm} for swap: ${walletSbtc} sBTC → ${bestQuote.amountOut.toFixed(2)} ${debtAsset}`);
+
+      const swapResult = await this.swapService.executeSwap(
+        bestQuote,
+        senderAddress,
+        senderKey,
+        0.5
+      );
+
+      await this.waitForConfirmation(swapResult.txId);
 
       // Step 2: Repay all debt
       console.log(`[BoostBTC] Step 2/3: Repaying ${debtAmount} ${debtAsset}...`);
@@ -213,7 +255,7 @@ export class BoostService {
       return {
         success: true,
         transactions: {
-          swap: { txId: swapResult.txHash },
+          swap: { txId: swapResult.txId },
           repay: { txId: repayResult.txId },
           withdraw: { txId: withdrawResult.txId },
         },

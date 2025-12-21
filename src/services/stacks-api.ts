@@ -126,6 +126,102 @@ export class StacksApiClient {
   }
 
   /**
+   * Gets stacking cycles history
+   */
+  async getStackingCycles(limit: number = 10, offset: number = 0): Promise<any> {
+    try {
+      const response = await this.client.get('/extended/v2/pox/cycles', {
+        params: { limit, offset },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch stacking cycles: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets signers for a specific cycle
+   */
+  async getSigners(cycleId: number, limit: number = 50, offset: number = 0): Promise<any> {
+    try {
+      const response = await this.client.get(`/extended/v2/pox/cycles/${cycleId}/signers`, {
+        params: { limit, offset },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch signers: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets pool delegations (delegated stackers)
+   */
+  async getPoolDelegations(poolAddress: string, limit: number = 50, offset: number = 0): Promise<any> {
+    try {
+      const response = await this.client.get('/extended/v1/pox/delegations', {
+        params: {
+          pool_address: poolAddress,
+          limit,
+          offset
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch pool delegations: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets burnchain rewards (BTC rewards distributed)
+   */
+  async getBurnchainRewards(limit: number = 20, offset: number = 0): Promise<any> {
+    try {
+      const response = await this.client.get('/extended/v1/burnchain/rewards', {
+        params: { limit, offset },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch burnchain rewards: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets burnchain rewards for a specific BTC address
+   */
+  async getBurnchainRewardsByAddress(btcAddress: string, limit: number = 20): Promise<any> {
+    try {
+      const response = await this.client.get(`/extended/v1/burnchain/rewards/${btcAddress}`, {
+        params: { limit },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(`Failed to fetch burnchain rewards for address: ${error.message}`);
+    }
+  }
+
+  /**
+   * Gets stacking positions from the Stacking Tracker API
+   */
+  async getStackingPositions(address: string): Promise<any> {
+    try {
+      const response = await axios.get(`https://api.stacking-tracker.com/positions/${address}`, {
+        timeout: 10000,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'stacksagent-mcp',
+        },
+      });
+      return response.data;
+    } catch (error: any) {
+      // Return empty array if not found (404) or if there's an error
+      if (error.response?.status === 404) {
+        return [];
+      }
+      throw new Error(`Failed to fetch stacking positions: ${error.message}`);
+    }
+  }
+
+  /**
    * Calls a read-only contract function
    */
   async callReadOnly(
