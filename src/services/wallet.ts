@@ -578,9 +578,27 @@ export class WalletService {
     network: 'mainnet' | 'testnet';
   }> {
     // Determine which wallet to unlock
-    const targetWalletId = walletId || this.activeWalletId;
+    let targetWalletId = walletId || this.activeWalletId;
+
+    // Auto-detect and select wallet if none is specified
     if (!targetWalletId) {
-      throw new Error('No wallet specified. Please create or import a wallet first.');
+      const wallets = await this.listWallets();
+
+      if (wallets.length === 0) {
+        throw new Error('No wallet specified. Please create or import a wallet first.');
+      }
+
+      // Auto-select wallet: prefer most recently used, or first wallet
+      const sortedWallets = [...wallets].sort((a, b) => {
+        const timeA = new Date(a.lastUsed || a.createdAt).getTime();
+        const timeB = new Date(b.lastUsed || b.createdAt).getTime();
+        return timeB - timeA; // Most recent first
+      });
+
+      targetWalletId = sortedWallets[0].id;
+
+      // Set as active wallet
+      await this.setActiveWallet(targetWalletId, 0);
     }
 
     const wallet = await this.walletIndexManager.getWallet(targetWalletId);

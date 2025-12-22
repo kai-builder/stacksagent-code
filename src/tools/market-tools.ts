@@ -5,6 +5,7 @@ import { SwapService } from '../services/swap.js';
 import { WalletService } from '../services/wallet.js';
 import { configManager } from '../utils/config.js';
 import { resolveToken } from '../utils/token-resolver.js';
+import { STACKS_MAINNET_API, STACKS_TESTNET_API } from '../utils/constants.js';
 
 export const marketTools = (
   priceService: PriceService,
@@ -149,7 +150,7 @@ export const marketTools = (
   },
 
   dex_swap: {
-    description: 'Executes a token swap on a DEX (Bitflow, Alex, Velar, or Faktory). Automatically finds the best rate across all DEXes. Requires wallet to be unlocked.',
+    description: 'Executes a token swap on a DEX. Coming soon - use DEX UI for now.',
     parameters: z.object({
       fromToken: z.string().describe('Token to swap from (symbol or contract ID, e.g., "STX", "WELSH")'),
       toToken: z.string().describe('Token to swap to (symbol or contract ID, e.g., "WELSH", "sBTC")'),
@@ -162,186 +163,74 @@ export const marketTools = (
       amount: string;
       slippage?: number;
     }) => {
-      try {
-        if (!walletService.isUnlocked()) {
-          return {
-            success: false,
-            error: 'Wallet is locked. Please unlock it first with wallet_unlock.',
-          };
-        }
-
-        const config = configManager.get();
-        const slippage = args.slippage || config.trading.defaultSlippage;
-
-        // Validate slippage
-        if (slippage > config.trading.maxSlippage) {
-          return {
-            success: false,
-            error: `Slippage exceeds maximum allowed (${config.trading.maxSlippage}%)`,
-          };
-        }
-
-        const privateKey = walletService.getPrivateKey();
-        const address = walletService.getAddress();
-
-        // Step 1: Resolve tokens to contract IDs
-        const fromTokenInfo = resolveToken(args.fromToken);
-        const toTokenInfo = resolveToken(args.toToken);
-
-        console.log(`[dex_swap] Resolved tokens:`, {
-          from: fromTokenInfo,
-          to: toTokenInfo,
-        });
-
-        // Step 2: Get quotes from all AMMs
-        const amountNum = parseFloat(args.amount);
-        if (!Number.isFinite(amountNum) || amountNum <= 0) {
-          return {
-            success: false,
-            error: `Invalid amount: ${args.amount}`,
-          };
-        }
-
-        console.log(`[dex_swap] Getting quotes for ${amountNum} ${fromTokenInfo.symbol} → ${toTokenInfo.symbol}`);
-
-        const quotes = await swapService.getAllQuotes(
-          fromTokenInfo.contractId,
-          toTokenInfo.contractId,
-          amountNum
-        );
-
-        if (quotes.length === 0) {
-          return {
-            success: false,
-            error: `No swap routes available for ${fromTokenInfo.symbol} → ${toTokenInfo.symbol}. Try a different pair or amount.`,
-          };
-        }
-
-        // Step 3: Select best quote (highest output)
-        const bestQuote = quotes.reduce((best, current) =>
-          current.amountOut > best.amountOut ? current : best
-        );
-
-        console.log(`[dex_swap] Best quote from ${bestQuote.amm}: ${bestQuote.amountOut.toFixed(6)} ${toTokenInfo.symbol}`);
-        console.log(`[dex_swap] All quotes:`, quotes.map(q => `${q.amm}: ${q.amountOut.toFixed(6)}`));
-
-        // Step 4: Execute swap
-        const result = await swapService.executeSwap(
-          bestQuote,
-          address,
-          privateKey,
-          slippage
-        );
-
-        return {
-          success: true,
-          txId: result.txId,
-          amm: bestQuote.amm,
-          swap: {
-            from: `${amountNum} ${fromTokenInfo.symbol}`,
-            to: `~${bestQuote.amountOut.toFixed(6)} ${toTokenInfo.symbol}`,
-            rate: `1 ${fromTokenInfo.symbol} = ${(bestQuote.amountOut / amountNum).toFixed(6)} ${toTokenInfo.symbol}`,
-          },
-          allQuotes: quotes.map(q => ({
-            amm: q.amm,
-            amountOut: q.amountOut.toFixed(6),
-            rate: `1 ${fromTokenInfo.symbol} = ${(q.amountOut / amountNum).toFixed(6)} ${toTokenInfo.symbol}`,
-          })),
-          message: `Swap executed on ${bestQuote.amm}. Expected output: ~${bestQuote.amountOut.toFixed(6)} ${toTokenInfo.symbol}. Transaction: ${result.txId}`,
-        };
-      } catch (error: any) {
-        console.error('[dex_swap] Error:', error);
-        return {
-          success: false,
-          error: error.message || 'Swap failed',
-          details: error.stack,
-        };
-      }
+      return {
+        success: false,
+        comingSoon: true,
+        message: 'Direct swap execution is coming soon! For now, please use one of these DEX interfaces:',
+        dexInterfaces: {
+          bitflow: 'https://app.bitflow.finance/trade',
+          alex: 'https://app.alexlab.co/swap',
+          velar: 'https://app.velar.com/swap',
+          faktory: 'https://fak.fun/swap',
+        },
+        requestedSwap: {
+          from: args.fromToken,
+          to: args.toToken,
+          amount: args.amount,
+        },
+      };
     },
   },
 
   dex_add_liquidity: {
-    description: 'Adds liquidity to a pool (receives LP tokens)',
+    description: 'Adds liquidity to a pool. Coming soon - use DEX UI for now.',
     parameters: z.object({
       poolId: z.string().describe('Pool identifier'),
       amountA: z.string().describe('Amount of first token'),
       amountB: z.string().describe('Amount of second token'),
     }),
     handler: async (args: { poolId: string; amountA: string; amountB: string }) => {
-      try {
-        if (!walletService.isUnlocked()) {
-          return {
-            success: false,
-            error: 'Wallet is locked. Please unlock it first.',
-          };
-        }
-
-        const privateKey = walletService.getPrivateKey();
-        const address = walletService.getAddress();
-
-        const result = await dexService.addLiquidity(
-          args.poolId,
-          args.amountA,
-          args.amountB,
-          privateKey,
-          address
-        );
-
-        return {
-          success: true,
-          txHash: result.txHash,
-          lpTokensReceived: result.lpTokens,
-          message: 'Liquidity added successfully',
-        };
-      } catch (error: any) {
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
+      return {
+        success: false,
+        comingSoon: true,
+        message: 'Adding liquidity is coming soon! For now, please use one of these DEX interfaces:',
+        dexInterfaces: {
+          bitflow: 'https://app.bitflow.finance/trade',
+          alex: 'https://app.alexlab.co/swap',
+          velar: 'https://app.velar.com/swap',
+          faktory: 'https://fak.fun/swap',
+        },
+        requestedAction: {
+          poolId: args.poolId,
+          amountA: args.amountA,
+          amountB: args.amountB,
+        },
+      };
     },
   },
 
   dex_remove_liquidity: {
-    description: 'Removes liquidity from a pool (burns LP tokens)',
+    description: 'Removes liquidity from a pool. Coming soon - use DEX UI for now.',
     parameters: z.object({
       poolId: z.string().describe('Pool identifier'),
       lpAmount: z.string().describe('Amount of LP tokens to burn'),
     }),
     handler: async (args: { poolId: string; lpAmount: string }) => {
-      try {
-        if (!walletService.isUnlocked()) {
-          return {
-            success: false,
-            error: 'Wallet is locked. Please unlock it first.',
-          };
-        }
-
-        const privateKey = walletService.getPrivateKey();
-        const address = walletService.getAddress();
-
-        const result = await dexService.removeLiquidity(
-          args.poolId,
-          args.lpAmount,
-          privateKey,
-          address
-        );
-
-        return {
-          success: true,
-          txHash: result.txHash,
-          tokensReceived: {
-            amountA: result.amountA,
-            amountB: result.amountB,
-          },
-          message: 'Liquidity removed successfully',
-        };
-      } catch (error: any) {
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
+      return {
+        success: false,
+        comingSoon: true,
+        message: 'Removing liquidity is coming soon! For now, please use one of these DEX interfaces:',
+        dexInterfaces: {
+          bitflow: 'https://app.bitflow.finance/trade',
+          alex: 'https://app.alexlab.co/swap',
+          velar: 'https://app.velar.com/swap',
+          faktory: 'https://fak.fun/swap',
+        },
+        requestedAction: {
+          poolId: args.poolId,
+          lpAmount: args.lpAmount,
+        },
+      };
     },
   },
 });

@@ -91,7 +91,7 @@ export class BoostService {
       const borrowAmountUsd = collateralValueUsd * ltv;
 
       // Step 1: Supply sBTC as collateral
-      console.log(`[BoostBTC] Step 1/3: Supplying ${params.sbtcAmount} sBTC as collateral...`);
+      console.error(`[BoostBTC] Step 1/3: Supplying ${params.sbtcAmount} sBTC as collateral...`);
       const supplyResult = await this.zestService.supply(
         { asset: 'sbtc', amount: params.sbtcAmount },
         senderAddress,
@@ -102,7 +102,7 @@ export class BoostService {
       await this.waitForConfirmation(supplyResult.txId);
 
       // Step 2: Borrow stablecoin
-      console.log(`[BoostBTC] Step 2/3: Borrowing ${borrowAmountUsd.toFixed(2)} ${stablecoin}...`);
+      console.error(`[BoostBTC] Step 2/3: Borrowing ${borrowAmountUsd.toFixed(2)} ${stablecoin}...`);
       const borrowResult = await this.zestService.borrow(
         {
           assetToBorrow: stablecoin,
@@ -116,7 +116,7 @@ export class BoostService {
       await this.waitForConfirmation(borrowResult.txId);
 
       // Step 3: Swap stablecoin to sBTC
-      console.log(`[BoostBTC] Step 3/3: Swapping ${stablecoin} to sBTC...`);
+      console.error(`[BoostBTC] Step 3/3: Swapping ${stablecoin} to sBTC...`);
 
       // Get the stablecoin and sBTC contract IDs
       const stablecoinContractId = ZEST_ASSETS[stablecoin].token;
@@ -138,7 +138,7 @@ export class BoostService {
         current.amountOut > best.amountOut ? current : best
       );
 
-      console.log(`[BoostBTC] Using ${bestQuote.amm} for swap: ${borrowAmountUsd} ${stablecoin} → ${bestQuote.amountOut.toFixed(8)} sBTC`);
+      console.error(`[BoostBTC] Using ${bestQuote.amm} for swap: ${borrowAmountUsd} ${stablecoin} → ${bestQuote.amountOut.toFixed(8)} sBTC`);
 
       // Execute the swap
       const swapResult = await this.swapService.executeSwap(
@@ -196,7 +196,7 @@ export class BoostService {
   ): Promise<BoostBtcDeleverageResult> {
     try {
       // Step 1: Swap sBTC in wallet to stablecoin to repay debt
-      console.log(`[BoostBTC] Step 1/3: Swapping ${walletSbtc} sBTC to ${debtAsset}...`);
+      console.error(`[BoostBTC] Step 1/3: Swapping ${walletSbtc} sBTC to ${debtAsset}...`);
 
       const sbtcContractId = ZEST_ASSETS.sbtc.token;
       const debtAssetContractId = ZEST_ASSETS[debtAsset].token;
@@ -217,7 +217,7 @@ export class BoostService {
         current.amountOut > best.amountOut ? current : best
       );
 
-      console.log(`[BoostBTC] Using ${bestQuote.amm} for swap: ${walletSbtc} sBTC → ${bestQuote.amountOut.toFixed(2)} ${debtAsset}`);
+      console.error(`[BoostBTC] Using ${bestQuote.amm} for swap: ${walletSbtc} sBTC → ${bestQuote.amountOut.toFixed(2)} ${debtAsset}`);
 
       const swapResult = await this.swapService.executeSwap(
         bestQuote,
@@ -229,7 +229,7 @@ export class BoostService {
       await this.waitForConfirmation(swapResult.txId);
 
       // Step 2: Repay all debt
-      console.log(`[BoostBTC] Step 2/3: Repaying ${debtAmount} ${debtAsset}...`);
+      console.error(`[BoostBTC] Step 2/3: Repaying ${debtAmount} ${debtAsset}...`);
       const repayResult = await this.zestService.repay(
         {
           asset: debtAsset,
@@ -242,7 +242,7 @@ export class BoostService {
       await this.waitForConfirmation(repayResult.txId);
 
       // Step 3: Withdraw all collateral
-      console.log(`[BoostBTC] Step 3/3: Withdrawing ${collateralAmount} sBTC...`);
+      console.error(`[BoostBTC] Step 3/3: Withdrawing ${collateralAmount} sBTC...`);
       const withdrawResult = await this.zestService.withdraw(
         {
           asset: 'sbtc',
@@ -326,7 +326,7 @@ export class BoostService {
         const tx = await this.apiClient.getTransaction(txId);
 
         if (tx.tx_status === 'success') {
-          console.log(`[BoostBTC] Transaction ${txId} confirmed`);
+          console.error(`[BoostBTC] Transaction ${txId} confirmed`);
           return;
         }
 

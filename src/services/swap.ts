@@ -60,6 +60,9 @@ export class SwapService {
 
   /**
    * Get quotes from all AMMs
+   * NOTE: Alex and Velar are temporarily disabled due to SDK compatibility issues
+   * - Alex: Requires @stacks v7.x but project uses v6.x
+   * - Velar: SDK serialization issues with Clarity values
    */
   async getAllQuotes(
     fromContractId: string,
@@ -68,11 +71,11 @@ export class SwapService {
   ): Promise<SwapQuote[]> {
     const quotes: SwapQuote[] = [];
 
-    // Try to get quotes from all AMMs in parallel
+    // Try to get quotes from working AMMs only (Bitflow and Faktory)
     const results = await Promise.allSettled([
       this.getBitflowQuote(fromContractId, toContractId, amount),
-      this.getAlexQuote(fromContractId, toContractId, amount),
-      this.getVelarQuote(fromContractId, toContractId, amount),
+      // this.getAlexQuote(fromContractId, toContractId, amount), // Disabled: @stacks version mismatch
+      // this.getVelarQuote(fromContractId, toContractId, amount), // Disabled: Clarity serialization issues
       this.getFaktoryQuote(fromContractId, toContractId, amount),
     ]);
 
@@ -210,20 +213,38 @@ export class SwapService {
     amount: number
   ): Promise<SwapQuote | null> {
     try {
+      // Initialize Alex SDK if needed
       if (!this.alex) {
-        this.alex = new AlexSDK();
+        try {
+          this.alex = new AlexSDK();
+          // Allow SDK to initialize properly
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (initError) {
+          console.error('[SwapService] Alex SDK initialization failed:', initError);
+          return null;
+        }
       }
 
       const fromCurrency = await this.toAlexCurrency(fromContractId);
       const toCurrency = await this.toAlexCurrency(toContractId);
 
-      if (!fromCurrency || !toCurrency) return null;
+      if (!fromCurrency || !toCurrency) {
+        console.error('[SwapService] Alex: Could not resolve currencies');
+        return null;
+      }
 
       const fromDecimals = this.getDecimals(fromContractId);
       const toDecimals = this.getDecimals(toContractId);
 
       const amountBigInt = this.amountToBigInt(amount, fromDecimals);
-      const amountTo = await this.alex.getAmountTo(fromCurrency, amountBigInt, toCurrency);
+
+      // Try to get quote with timeout
+      const amountTo = await Promise.race([
+        this.alex.getAmountTo(fromCurrency, amountBigInt, toCurrency),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Alex API timeout')), 5000)
+        ),
+      ]);
 
       if (!amountTo) return null;
 
@@ -411,10 +432,21 @@ export class SwapService {
       amount: quote.amountIn,
     });
 
-    // Ensure postConditions is defined
-    if (!swapOptions.postConditions) {
-      swapOptions.postConditions = [];
+    console.error('[SwapService] Velar raw swapOptions keys:', Object.keys(swapOptions));
+    console.error('[SwapService] Velar swapOptions.contractAddress:', swapOptions.contractAddress);
+    console.error('[SwapService] Velar swapOptions.contractName:', swapOptions.contractName);
+    console.error('[SwapService] Velar swapOptions.functionName:', swapOptions.functionName);
+    console.error('[SwapService] Velar swapOptions.functionArgs length:', swapOptions.functionArgs?.length);
+
+    if (swapOptions.functionArgs) {
+      swapOptions.functionArgs.forEach((arg: any, idx: number) => {
+        console.error(`[SwapService] Velar functionArgs[${idx}]:`, typeof arg, arg?.type || 'no type');
+      });
     }
+
+    // Force empty postConditions array for Velar (SDK returns invalid format)
+    // We use PostConditionMode.Allow so this is safe
+    swapOptions.postConditions = [];
 
     return swapOptions;
   }

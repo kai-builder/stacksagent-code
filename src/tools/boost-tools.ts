@@ -54,7 +54,7 @@ export const boostTools = (boostService: BoostService, walletService: WalletServ
 
         const config = configManager.get();
 
-        console.log(
+        console.error(
           `[BoostBTC] Starting leverage operation: ${args.sbtcAmount} sBTC @ ${args.targetLeverage || 1.5}x`
         );
 
@@ -131,7 +131,7 @@ export const boostTools = (boostService: BoostService, walletService: WalletServ
         const privateKey = walletService.getPrivateKey();
         const address = walletService.getAddress();
 
-        console.log(`[BoostBTC] Starting deleverage operation...`);
+        console.error(`[BoostBTC] Starting deleverage operation...`);
 
         const result = await boostService.deleverage(
           { repayAll: true },

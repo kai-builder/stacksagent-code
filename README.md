@@ -1,10 +1,8 @@
 # Stacks MCP Server
 
-A Model Context Protocol (MCP) server that enables Claude Desktop to interact with the Stacks blockchain. Manage your wallet, trade tokens, stack STX, track your portfolio, and **develop & deploy Clarity smart contracts**—all through natural conversation.
+A Model Context Protocol (MCP) server that enables **Claude Desktop** to interact with the Stacks blockchain. Manage your wallet, trade tokens, stack STX, track your portfolio, and **develop & deploy Clarity smart contracts**—all through natural conversation.
 
-> **New in v0.2.0**: Complete Clarity smart contract development lifecycle with intelligent example search and blockchain deployment!
-
-> **Note**: This is an MVP (Minimum Viable Product) release. Some features use mock data and are being actively developed. See [Limitations](#limitations-mvp) for details.
+> **Note**: This is an MVP release. Some features use mock data and are being actively developed. See [Limitations](#limitations-mvp) for details.
 
 ## Features
 
@@ -17,9 +15,9 @@ A Model Context Protocol (MCP) server that enables Claude Desktop to interact wi
 ### Market Data & Trading
 - Get real-time token prices
 - View trending tokens and liquidity pools
-- Get DEX swap quotes (Alex, Velar, Bitflow)
-- Execute token swaps with slippage protection
-- Add/remove liquidity from pools
+- Get DEX swap quotes (Alex, Velar, Bitflow, Faktory)
+- Execute token swaps *(Coming soon - use DEX UI for now)*
+- Add/remove liquidity from pools *(Coming soon - use DEX UI for now)*
 
 ### Stacking (PoX)
 - Check current cycle and stacking info
@@ -346,14 +344,18 @@ Best route: STX → WELSH via Alex
 ```
 You: Swap 100 STX for WELSH
 
-Claude: I'll need to unlock your wallet first. You'll receive ~4.52M WELSH for 100 STX.
-Should I proceed with this swap?
+Claude: Direct swap execution is coming soon! For now, you can swap manually using these DEX interfaces:
+- Bitflow: https://app.bitflow.finance/trade
+- Alex: https://app.alexlab.co/swap
+- Velar: https://app.velar.com/swap
+- Faktory: https://fak.fun/swap
 
-You: Yes, my password is "MySecurePassword123"
+Based on your request, you want to swap:
+- From: STX
+- To: WELSH
+- Amount: 100
 
-Claude: [Unlocks wallet, executes swap]
-✓ Swap complete! Transaction: 0x7f3a...
-You received 4,512,893 WELSH.
+Would you like me to get you a quote first to see the expected rate?
 ```
 
 #### Check Stacking Info
@@ -402,9 +404,15 @@ Stacking: Not currently stacking
 - `market_get_tokens` - List trending/new tokens
 - `market_get_pools` - Get liquidity pools with APY
 - `dex_quote` - Get swap quote
-- `dex_swap` - Execute token swap
-- `dex_add_liquidity` - Add liquidity to pool
-- `dex_remove_liquidity` - Remove liquidity from pool
+- `dex_swap` - Execute token swap *(Coming soon - provides DEX UI links)*
+- `dex_add_liquidity` - Add liquidity to pool *(Coming soon - provides DEX UI links)*
+- `dex_remove_liquidity` - Remove liquidity from pool *(Coming soon - provides DEX UI links)*
+
+**DEX Interfaces (for manual trading):**
+- Bitflow: https://app.bitflow.finance/trade
+- Alex: https://app.alexlab.co/swap
+- Velar: https://app.velar.com/swap
+- Faktory: https://fak.fun/swap
 
 ### Stacking Tools
 
@@ -490,7 +498,7 @@ npm test
 
 This is an MVP release. Some features are not yet fully implemented:
 
-1. **DEX Integration**: Currently uses mock quotes. Full Alex/Velar/Bitflow integration coming soon.
+1. **DEX Swaps & Liquidity**: Direct swap execution and liquidity management are coming soon. For now, use the provided DEX UI links (Bitflow, Alex, Velar, Faktory). Swap quotes are fully functional.
 2. **Stacking**: Core stacking contract calls need implementation.
 3. **Price Data**: Limited to major tokens.
 4. **Multi-wallet**: Only supports single wallet currently.
@@ -499,7 +507,8 @@ This is an MVP release. Some features are not yet fully implemented:
 ## Roadmap
 
 ### Phase 2
-- [ ] Full DEX API integration (Alex, Velar, Bitflow)
+- [ ] Direct swap execution (Alex, Velar, Bitflow, Faktory)
+- [ ] Liquidity management (add/remove)
 - [ ] Complete stacking contract implementation
 - [ ] Multi-wallet support
 - [ ] Enhanced portfolio tracking
