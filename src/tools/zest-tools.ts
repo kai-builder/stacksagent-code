@@ -8,7 +8,8 @@ import { ZestService } from '../services/zest.js';
 import { PythService } from '../services/pyth.js';
 import { WalletService } from '../services/wallet.js';
 import { configManager } from '../utils/config.js';
-import { ZEST_COLLATERAL_ASSETS, ZEST_BORROW_ASSETS } from '../utils/zest-constants.js';
+import { ZEST_COLLATERAL_ASSETS, ZEST_BORROW_ASSETS, ZEST_ASSETS } from '../utils/zest-constants.js';
+import { StacksApiClient } from '../services/stacks-api.js';
 
 export const zestTools = (zestService: ZestService, pythService: PythService, walletService: WalletService) => ({
   zest_supply: {
@@ -37,6 +38,39 @@ export const zestTools = (zestService: ZestService, pythService: PythService, wa
         const config = configManager.get();
         const privateKey = walletService.getPrivateKey();
         const address = walletService.getAddress();
+
+        // Check balance before attempting supply
+        const assetConfig = ZEST_ASSETS[args.asset as keyof typeof ZEST_ASSETS];
+        if (!assetConfig) {
+          return {
+            success: false,
+            error: `Asset configuration not found for ${args.asset}`,
+          };
+        }
+
+        const apiClient = new StacksApiClient(config.network);
+        const balanceStr = await apiClient.getTokenBalance(address, assetConfig.token);
+        const balance = parseFloat(balanceStr) / Math.pow(10, assetConfig.decimals);
+        const requestedAmount = parseFloat(args.amount);
+
+        if (isNaN(requestedAmount) || requestedAmount <= 0) {
+          return {
+            success: false,
+            error: `Invalid amount: ${args.amount}. Must be a positive number.`,
+          };
+        }
+
+        if (balance < requestedAmount) {
+          return {
+            success: false,
+            error: `Insufficient ${assetConfig.symbol} balance. You have ${balance.toFixed(assetConfig.decimals)} ${assetConfig.symbol}, trying to supply ${requestedAmount} ${assetConfig.symbol}`,
+            balanceInfo: {
+              available: `${balance.toFixed(assetConfig.decimals)} ${assetConfig.symbol}`,
+              requested: `${requestedAmount} ${assetConfig.symbol}`,
+              shortfall: `${(requestedAmount - balance).toFixed(assetConfig.decimals)} ${assetConfig.symbol}`,
+            },
+          };
+        }
 
         const result = await zestService.supply(
           { asset: args.asset as any, amount: args.amount },
@@ -147,6 +181,42 @@ export const zestTools = (zestService: ZestService, pythService: PythService, wa
         const config = configManager.get();
         const privateKey = walletService.getPrivateKey();
         const address = walletService.getAddress();
+
+        // Check balance before attempting repay (unless using "max")
+        if (args.amount.toLowerCase() !== 'max') {
+          const assetConfig = ZEST_ASSETS[args.asset as keyof typeof ZEST_ASSETS];
+          if (!assetConfig) {
+            return {
+              success: false,
+              error: `Asset configuration not found for ${args.asset}`,
+            };
+          }
+
+          const apiClient = new StacksApiClient(config.network);
+          const balanceStr = await apiClient.getTokenBalance(address, assetConfig.token);
+          const balance = parseFloat(balanceStr) / Math.pow(10, assetConfig.decimals);
+          const requestedAmount = parseFloat(args.amount);
+
+          if (isNaN(requestedAmount) || requestedAmount <= 0) {
+            return {
+              success: false,
+              error: `Invalid amount: ${args.amount}. Must be a positive number or "max".`,
+            };
+          }
+
+          if (balance < requestedAmount) {
+            return {
+              success: false,
+              error: `Insufficient ${assetConfig.symbol} balance. You have ${balance.toFixed(assetConfig.decimals)} ${assetConfig.symbol}, trying to repay ${requestedAmount} ${assetConfig.symbol}`,
+              balanceInfo: {
+                available: `${balance.toFixed(assetConfig.decimals)} ${assetConfig.symbol}`,
+                requested: `${requestedAmount} ${assetConfig.symbol}`,
+                shortfall: `${(requestedAmount - balance).toFixed(assetConfig.decimals)} ${assetConfig.symbol}`,
+              },
+              hint: 'Use amount: "max" to repay all debt with available balance',
+            };
+          }
+        }
 
         const result = await zestService.repay(
           { asset: args.asset as any, amount: args.amount, onBehalfOf: args.onBehalfOf },
