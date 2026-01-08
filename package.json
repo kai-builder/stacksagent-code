@@ -1,11 +1,17 @@
 {
-  "name": "stacks-agent-mcp",
-  "version": "1.0.5",
-  "description": "Stacks blockchain MCP server for Claude Desktop - interact with DeFi, swaps, stacking, and Clarity smart contracts",
-  "main": "dist/index.js",
+  "name": "stacks-agent",
+  "version": "1.0.0",
+  "description": "AI Skill for building Stacks blockchain applications - works with Claude Code, Cursor, Windsurf, Copilot, and more",
+  "main": "dist/mcp/index.js",
   "type": "module",
   "bin": {
-    "stacks-agent-mcp": "dist/index.js"
+    "stacks-agent-mcp": "dist/mcp/index.js",
+    "stacks-agent-api": "dist/api/index.js"
+  },
+  "exports": {
+    ".": "./dist/mcp/index.js",
+    "./core": "./dist/core/index.js",
+    "./api": "./dist/api/index.js"
   },
   "files": [
     "dist/**/*",
@@ -16,7 +22,11 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "prepare": "npm run build",
-    "start": "node dist/index.js",
+    "start": "node dist/mcp/index.js",
+    "mcp": "node dist/mcp/index.js",
+    "api": "node dist/api/index.js",
+    "dev:mcp": "npx ts-node --esm src/mcp/index.ts",
+    "dev:api": "npx ts-node --esm src/api/index.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -37,12 +47,12 @@
   "author": "kai-builder",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kai-builder/stacksagent-mcp.git"
+    "url": "git+https://github.com/kai-builder/stacks-agent.git"
   },
   "bugs": {
-    "url": "https://github.com/kai-builder/stacksagent-mcp/issues"
+    "url": "https://github.com/kai-builder/stacks-agent/issues"
   },
-  "homepage": "https://github.com/kai-builder/stacksagent-mcp#readme",
+  "homepage": "https://github.com/kai-builder/stacks-agent#readme",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -62,11 +72,15 @@
     "axios": "^1.7.9",
     "bip39": "^3.1.0",
     "bns-v2-sdk": "^2.1.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "express": "^5.2.1",
     "tslib": "^2.7.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2"
   },

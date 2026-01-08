@@ -1,864 +1,253 @@
-# Stacks MCP Server
+# Stacks Agent
 
-A Model Context Protocol (MCP) server that enables **Claude Desktop** to interact with the Stacks blockchain. Manage your wallet, trade tokens, stack STX, track your portfolio, and **develop & deploy Clarity smart contracts**—all through natural conversation.
+> AI Skill for building Stacks blockchain applications - Bitcoin's most powerful smart contract layer
 
-> **Note**: This is an MVP release. Some features use mock data and are being actively developed. See [Limitations](#limitations-mvp) for details.
+An intelligent AI assistant that provides development guidance for Clarity smart contracts, DeFi integration, and blockchain development on Stacks. Works with **Claude Code, Cursor, Windsurf, Antigravity, GitHub Copilot, Kiro, and Codex**.
 
-## Features
+![Stacks Agent](https://img.shields.io/npm/v/stacks-agent?color=blue&label=stacks-agent)
+![License](https://img.shields.io/npm/l/stacks-agent)
+![Downloads](https://img.shields.io/npm/dm/stacks-agent)
 
-### Wallet Management
-- Create new wallets with secure encryption (AES-256-GCM)
-- Import existing wallets from mnemonic or private key
-- View balances for STX and tokens
-- Encrypted keystore with password protection
+## ✨ Features
 
-### Market Data & Trading
-- Get real-time token prices
-- View trending tokens and liquidity pools
-- Get DEX swap quotes (Alex, Velar, Bitflow, Faktory)
-- Execute token swaps *(Coming soon - use DEX UI for now)*
-- Add/remove liquidity from pools *(Coming soon - use DEX UI for now)*
+- **🔷 61 Clarity Functions** - Complete language reference with examples
+- **📋 14 Contract Templates** - SIP-010, SIP-009, DAO, Vault, Marketplace, Stacking
+- **🔐 15 Security Patterns** - Common vulnerabilities and fixes
+- **🔄 15 DeFi Protocols** - Alex, Velar, Bitflow, Zest, StackingDAO, Boost, Faktory
+- **⚛️ 30 Stacks.js Snippets** - Wallet, transactions, API integration
+- **🌐 10 BNS Operations** - Name registration and resolution
+- **💰 15 Stacking Guides** - PoX stacking and pool delegation
+- **🚀 25 Deployment Steps** - Testnet, mainnet, and devnet workflows
 
-### Stacking (PoX)
-- Check current cycle and stacking info
-- View your stacking status and rewards
-- Stack STX to earn Bitcoin rewards
-- Delegate to stacking pools
+## 🎯 Use Cases
 
-### Portfolio Management
-- Comprehensive portfolio summary
-- Transaction history
-- Portfolio value tracking over time
-- P&L calculations
+- Generate Clarity smart contracts from natural language
+- Audit contracts for security vulnerabilities
+- Integrate with DeFi protocols (swaps, liquidity, lending)
+- Deploy to testnet/mainnet
+- Build dApps with Stacks.js
+- Implement stacking and BNS features
 
-### BNS (Bitcoin Name System)
-- Resolve BNS names to addresses
-- Get primary names for addresses
-- Look up name ownership and details
-- Check name resolution status
+## 📦 Installation
 
-### 🆕 Clarity Smart Contract Development
-- **Generate contracts** from natural language (6 templates: FT, NFT, Vault, DAO, Marketplace, Custom)
-- **Audit contracts** with comprehensive security analysis (0-100 score)
-- **Deploy contracts** to testnet or mainnet with one command (0.1 STX fee)
-- **Network validation** - automatically prevents deployment with wrong trait addresses
-- **Intelligent search** through 27+ example contracts
-- **Documentation integration** from 1,352 lines of Clarity.md
-- **Pattern matching** for better contract generation
-- **Security checks** based on best practices (including network compatibility)
-- **Explorer integration** for transaction monitoring
-
-## Installation
-
-### Prerequisites
-- Node.js 18 or higher
-- Claude Desktop app ([Download](https://claude.ai/download))
-
-### Quick Start
-
-**Option 1: Install from npm (Recommended)**
+### Using CLI (Recommended)
 
 ```bash
-npm install -g stacks-agent-mcp
+# Install globally
+npm install -g stacks-agent
+
+# Go to your project
+cd /path/to/your/project
+
+# Install for your AI assistant
+stacks-agent init --ai claude      # Claude Code
+stacks-agent init --ai cursor      # Cursor
+stacks-agent init --ai windsurf    # Windsurf
+stacks-agent init --ai antigravity # Antigravity
+stacks-agent init --ai copilot     # GitHub Copilot
+stacks-agent init --ai kiro        # Kiro
+stacks-agent init --ai codex       # OpenAI Codex
+stacks-agent init --ai all         # All platforms
 ```
 
-**Option 2: Build from source**
+### Manual Installation
 
-1. Clone the repository:
-```bash
-git clone https://github.com/kai-builder/stacksagent-mcp.git
-cd stacksagent-mcp
-```
+Copy the appropriate folders to your project:
 
-2. Install dependencies:
-```bash
-npm install
-```
+| AI Assistant    | Folders to Copy                                          |
+| --------------- | -------------------------------------------------------- |
+| Claude Code     | `.claude/skills/stacks-agent/`                           |
+| Cursor          | `.cursor/commands/stacks-agent.md` + `.shared/stacks-agent/` |
+| Windsurf        | `.windsurf/workflows/stacks-agent.md` + `.shared/stacks-agent/` |
+| Antigravity     | `.agent/workflows/stacks-agent.md` + `.shared/stacks-agent/` |
+| GitHub Copilot  | `.github/prompts/stacks-agent.prompt.md` + `.shared/stacks-agent/` |
+| Kiro            | `.kiro/steering/stacks-agent.md` + `.shared/stacks-agent/` |
+| Codex           | `.codex/skills/stacks-agent/`                            |
 
-3. Build the project:
-```bash
-npm run build
-```
+## 🚀 Usage
 
-4. Note the absolute path to your `dist/index.js` file - you'll need this for configuration.
-   - On macOS/Linux: Run `pwd` in the project directory, then append `/dist/index.js`
-   - On Windows: Run `cd` in the project directory, then append `\dist\index.js`
+### Claude Code
 
-## Configuration
-
-### 1. Open the Claude Desktop Configuration File
-
-**Configuration file location:**
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
-- **Linux:** `~/.config/Claude/claude_desktop_config.json`
-
-**How to open/edit the file:**
-
-**On macOS:**
-```bash
-# Option 1: Open in default text editor
-open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-# Option 2: Open with VS Code
-code ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-# Option 3: Edit with nano
-nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
-
-**On Windows (PowerShell):**
-```powershell
-# Open with notepad
-notepad "$env:APPDATA\Claude\claude_desktop_config.json"
-```
-
-**On Linux:**
-```bash
-# Open with default editor
-xdg-open ~/.config/Claude/claude_desktop_config.json
-
-# Or with nano
-nano ~/.config/Claude/claude_desktop_config.json
-```
-
-**If the file doesn't exist**, create it:
-```bash
-# macOS
-mkdir -p ~/Library/Application\ Support/Claude
-echo '{"mcpServers":{}}' > ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-# Windows (PowerShell)
-New-Item -ItemType Directory -Force -Path "$env:APPDATA\Claude"
-'{"mcpServers":{}}' | Out-File -FilePath "$env:APPDATA\Claude\claude_desktop_config.json" -Encoding utf8
-
-# Linux
-mkdir -p ~/.config/Claude
-echo '{"mcpServers":{}}' > ~/.config/Claude/claude_desktop_config.json
-```
-
-### 2. Add the MCP Server Configuration
-
-Choose the configuration based on how you installed the package:
-
-#### Option 1: If installed via npm (Recommended)
-
-Add this to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "stacksagent": {
-      "command": "npx",
-      "args": ["-y", "stacks-agent-mcp"],
-      "env": {
-        "STACKS_NETWORK": "mainnet"
-      }
-    }
-  }
-}
-```
-
-> **⚠️ Common Mistake:** Don't use `"command": "node"` with `"args": ["-y", "stacks-agent-mcp"]` - the `-y` flag only works with `npx`, not `node`!
-
-#### Option 2: If built from source
-
-**macOS/Linux:**
-```json
-{
-  "mcpServers": {
-    "stacksagent": {
-      "command": "node",
-      "args": ["/absolute/path/to/stacksagent-mcp/dist/index.js"],
-      "env": {
-        "STACKS_NETWORK": "mainnet"
-      }
-    }
-  }
-}
-```
-
-**Windows:**
-```json
-{
-  "mcpServers": {
-    "stacksagent": {
-      "command": "node",
-      "args": ["C:\\absolute\\path\\to\\stacksagent-mcp\\dist\\index.js"],
-      "env": {
-        "STACKS_NETWORK": "mainnet"
-      }
-    }
-  }
-}
-```
-
-**Get your absolute path:**
-```bash
-# macOS/Linux
-cd /path/to/stacksagent-mcp
-pwd
-# Copy the output and append /dist/index.js
-
-# Windows
-cd C:\path\to\stacksagent-mcp
-cd
-# Copy the output and append \dist\index.js
-```
-
-Example paths:
-- macOS: `/Users/yourname/Projects/stacksagent-mcp/dist/index.js`
-- Linux: `/home/yourname/projects/stacksagent-mcp/dist/index.js`
-- Windows: `C:\\Users\\YourName\\Projects\\stacksagent-mcp\\dist\\index.js`
-
-#### Option 3: Using direct binary path
-
-If you know where the package is installed (find with `which stacks-agent-mcp` on macOS/Linux):
-
-```json
-{
-  "mcpServers": {
-    "stacksagent": {
-      "command": "stacks-agent-mcp",
-      "args": [],
-      "env": {
-        "STACKS_NETWORK": "mainnet"
-      }
-    }
-  }
-}
-```
-
-### 3. Restart Claude Desktop
-
-After editing the configuration file:
-
-1. **Save the file** (Cmd+S or Ctrl+S)
-2. **Completely quit** Claude Desktop (not just close the window)
-   - macOS: Press `Cmd+Q` or right-click dock icon → Quit
-   - Windows: Right-click system tray → Exit
-3. **Wait 5 seconds**
-4. **Restart** Claude Desktop
-
-### 4. Verify It's Working
-
-Open a new conversation in Claude and ask:
-```
-What Stacks blockchain tools do you have available?
-```
-
-If Claude responds with a list of Stacks tools, you're all set! If not, check the [Troubleshooting](#troubleshooting) section below.
-
-### 5. Server Configuration (Optional)
-
-The server creates a config file at `~/.stacks-mcp/config.json` on first run. You can customize:
-
-```json
-{
-  "network": "mainnet",
-  "wallet": {
-    "keystorePath": "~/.stacks-mcp/wallet.enc",
-    "autoLockMinutes": 15
-  },
-  "rpc": {
-    "primary": "https://api.hiro.so",
-    "fallback": "https://api.mainnet.hiro.so"
-  },
-  "trading": {
-    "defaultSlippage": 0.5,
-    "maxSlippage": 5.0,
-    "preferredDex": "auto"
-  },
-  "limits": {
-    "maxSingleTxUsd": 1000,
-    "dailyTxLimitUsd": 5000,
-    "requireConfirmation": true
-  },
-  "protocols": {
-    "alex": { "enabled": true },
-    "velar": { "enabled": true },
-    "bitflow": { "enabled": true }
-  }
-}
-```
-
-## Usage
-
-### First Time Setup
-
-After installing and configuring the MCP server:
-
-1. **Restart Claude Desktop** completely (quit and reopen)
-2. **Start a new conversation** with Claude
-3. **Verify the tools are available** by asking:
-   ```
-   What Stacks blockchain tools do you have access to?
-   ```
-4. **Create or import a wallet** to start using the features
-
-### Security First
-
-⚠️ **Important**: Your wallet and private keys are stored locally on your machine in encrypted format at `~/.stacks-mcp/wallet.enc`.
-
-Before creating a wallet:
-- Choose a **strong password** (store it in a password manager)
-- You'll receive a **24-word mnemonic phrase** - write it down and store it securely offline
-- **Never share** your mnemonic or private key with anyone
-- The wallet **auto-locks** after 15 minutes of inactivity
-
-### Example Conversations
-
-#### Create a New Wallet
+The skill activates automatically when you request Stacks development work:
 
 ```
-You: Create a new Stacks wallet for me with password "MySecurePassword123"
-
-Claude: I'll create a new wallet for you...
-[Creates wallet and returns address and mnemonic]
+Create a meme token called PEPE with 1 billion supply
 ```
 
-#### Check Balance
+### Cursor / Windsurf / Antigravity
+
+Use the slash command:
 
 ```
-You: What's my STX balance?
-
-Claude: Let me check your balance...
-Your wallet holds 1,234.56 STX (~$892 USD) and 3 other tokens.
+/stacks-agent Create a meme token called PEPE with 1 billion supply
 ```
 
-#### Get a Swap Quote
+### GitHub Copilot
+
+Reference in chat:
 
 ```
-You: How much WELSH can I get for 100 STX?
-
-Claude: Let me get a quote...
-You can swap 100 STX for approximately 4,521,304 WELSH.
-Rate: 1 STX = 45,213 WELSH
-Fee: 0.3 STX (0.3%)
-Slippage: 0.5%
-Best route: STX → WELSH via Alex
+@stacks-agent How do I swap tokens on Alex?
 ```
 
-#### Execute a Swap
+## 💡 Example Prompts
 
 ```
-You: Swap 100 STX for WELSH
-
-Claude: Direct swap execution is coming soon! For now, you can swap manually using these DEX interfaces:
-- Bitflow: https://app.bitflow.finance/trade
-- Alex: https://app.alexlab.co/swap
-- Velar: https://app.velar.com/swap
-- Faktory: https://fak.fun/swap
-
-Based on your request, you want to swap:
-- From: STX
-- To: WELSH
-- Amount: 100
-
-Would you like me to get you a quote first to see the expected rate?
+"Create a SIP-010 token with burn mechanism"
+"Build an NFT collection with royalties"
+"Audit this Clarity contract for security issues"
+"Show me how to integrate Alex swap in my dApp"
+"Deploy my contract to testnet"
+"How do I implement stacking in my app?"
+"Generate a DAO contract with proposal voting"
 ```
 
-#### Check Stacking Info
+## 🔍 Knowledge Base Search
 
-```
-You: What's the current stacking APY?
-
-Claude: Current Stacking info:
-- Cycle: 82
-- APY: ~8% (paid in BTC)
-- Minimum: 100,000 STX
-- Next cycle starts: 2025-02-15
-```
-
-#### View Portfolio
-
-```
-You: Show me my portfolio
-
-Claude: Portfolio Summary:
-Total Value: $15,234.56
-
-Holdings:
-- 1,234.56 STX ($892.00)
-- 4,512,893 WELSH ($1,200.45)
-- 500.00 USDA ($500.00)
-
-Stacking: Not currently stacking
-```
-
-## Available Tools
-
-### Wallet Tools
-
-- `wallet_create` - Create a new wallet
-- `wallet_import` - Import wallet from mnemonic/private key
-- `wallet_unlock` - Unlock wallet with password
-- `wallet_lock` - Lock wallet
-- `wallet_get_address` - Get current wallet address
-- `wallet_get_balance` - Get STX and token balances
-- `wallet_status` - Check if wallet exists and is unlocked
-
-### Market & DEX Tools
-
-- `market_get_price` - Get token price in USD
-- `market_get_tokens` - List trending/new tokens
-- `market_get_pools` - Get liquidity pools with APY
-- `dex_quote` - Get swap quote
-- `dex_swap` - Execute token swap *(Coming soon - provides DEX UI links)*
-- `dex_add_liquidity` - Add liquidity to pool *(Coming soon - provides DEX UI links)*
-- `dex_remove_liquidity` - Remove liquidity from pool *(Coming soon - provides DEX UI links)*
-
-**DEX Interfaces (for manual trading):**
-- Bitflow: https://app.bitflow.finance/trade
-- Alex: https://app.alexlab.co/swap
-- Velar: https://app.velar.com/swap
-- Faktory: https://fak.fun/swap
-
-### Stacking Tools
-
-- `stacking_get_info` - Get current PoX cycle info
-- `stacking_get_status` - Check stacking status
-- `stacking_stack` - Stack STX for rewards
-- `stacking_delegate` - Delegate to stacking pool
-
-### Portfolio Tools
-
-- `portfolio_summary` - Get portfolio summary
-- `portfolio_transactions` - View transaction history
-- `portfolio_history` - Get portfolio value over time
-
-## Security
-
-### Key Storage
-- Private keys are encrypted using scrypt + AES-256-GCM
-- Keys never leave your local machine
-- Encrypted keystore stored at `~/.stacks-mcp/wallet.enc`
-
-### Transaction Safety
-- All write operations require wallet to be unlocked
-- Configurable transaction limits
-- Slippage protection on swaps
-- Post-conditions ensure transaction safety
-
-### Best Practices
-1. **Use a strong password** for your wallet
-2. **Backup your mnemonic phrase** securely
-3. **Never share your mnemonic or private key**
-4. **Lock your wallet** when not in use
-5. **Review transaction details** before confirming
-
-## Development
-
-### Project Structure
-
-```
-stacksagent-mcp/
-├── src/
-│   ├── index.ts              # Main MCP server
-│   ├── services/             # Core services
-│   │   ├── wallet.ts         # Wallet management
-│   │   ├── stacks-api.ts     # Stacks API client
-│   │   ├── price.ts          # Price data
-│   │   ├── dex.ts            # DEX operations
-│   │   ├── stacking.ts       # Stacking/PoX
-│   │   └── portfolio.ts      # Portfolio tracking
-│   ├── tools/                # MCP tool definitions
-│   │   ├── wallet-tools.ts
-│   │   ├── market-tools.ts
-│   │   └── stacking-tools.ts
-│   ├── types/                # TypeScript types
-│   └── utils/                # Utilities
-│       ├── config.ts
-│       ├── constants.ts
-│       └── encryption.ts
-├── package.json
-├── tsconfig.json
-└── README.md
-```
-
-### Build
+The skill includes a powerful BM25-based search engine:
 
 ```bash
-npm run build
+# Auto-detect domain
+python3 .claude/skills/stacks-agent/scripts/search.py "define-public"
+
+# Search specific domain
+python3 .claude/skills/stacks-agent/scripts/search.py "swap tokens" --domain defi
+
+# Get more results
+python3 .claude/skills/stacks-agent/scripts/search.py "security" --domain security -n 10
+
+# JSON output
+python3 .claude/skills/stacks-agent/scripts/search.py "stx transfer" --domain stacksjs -f json
 ```
 
-### Development Mode
+**Available domains**:
+- `clarity` - Syntax and functions
+- `templates` - Contract templates
+- `security` - Security patterns
+- `defi` - DeFi protocols
+- `stacksjs` - JavaScript snippets
+- `bns` - BNS operations
+- `stacking` - Stacking guides
+- `deployment` - Deployment steps
+- `auto` - Auto-detect (default)
+
+## 📚 Knowledge Base Contents
+
+### Clarity Language (61 entries)
+Types, functions, control flow, arithmetic, comparisons, maps, tokens, STX operations
+
+### Contract Templates (14 entries)
+- **Tokens**: SIP-010 basic, mintable, burnable, capped
+- **NFTs**: SIP-009 basic, mintable, royalties
+- **DeFi**: Vault basic/timelocked, liquidity pool
+- **DAO**: Basic DAO, treasury management
+- **Other**: Marketplace, stacking pool
+
+### Security Patterns (15 entries)
+- Critical: Access control, unchecked transfers
+- High: Reentrancy, arithmetic safety
+- Medium: Input validation, front-running
+- Low: Code style, gas optimization
+
+### DeFi Protocols (15 entries)
+Alex, Velar, Bitflow, Zest, StackingDAO, Boost, Faktory integration patterns
+
+### Stacks.js (30 entries)
+Wallet connection, transactions, Clarity values, API calls, post-conditions
+
+### BNS (10 entries)
+Name resolution, registration, transfer, updates
+
+### Stacking (15 entries)
+Direct stacking, delegation, pools, rewards
+
+### Deployment (25 entries)
+Testnet, mainnet, devnet workflows with Clarinet
+
+## 🛡️ Security Best Practices
+
+All generated contracts include:
+
+- ✅ Access control (`tx-sender` validation)
+- ✅ Error handling (`try!`, `unwrap!`)
+- ✅ Input validation (`asserts!`)
+- ✅ Named error constants
+- ✅ Kebab-case naming
+- ✅ Network compatibility checks
+
+## 🌐 Networks
+
+- **Mainnet**: Production (SP... addresses)
+- **Testnet**: Testing (ST... addresses, free STX)
+- **Devnet**: Local development (Clarinet)
+
+## 🔧 Prerequisites
+
+- Python 3.x (for search functionality)
+- Node.js 18+ (for CLI installation)
 
 ```bash
-npm run dev
+python3 --version
+node --version
 ```
 
-### Testing
+## 📖 Documentation
 
-```bash
-npm test
-```
+- [Stacks Docs](https://docs.stacks.co)
+- [Clarity Reference](https://docs.stacks.co/clarity)
+- [Hiro Platform](https://platform.hiro.so)
+- [Explorer (Mainnet)](https://explorer.hiro.so)
+- [Explorer (Testnet)](https://explorer.hiro.so/?chain=testnet)
 
-## Limitations (MVP)
+## 🔗 DeFi Resources
 
-This is an MVP release. Some features are not yet fully implemented:
+- [Alex DEX](https://app.alexlab.co)
+- [Velar DEX](https://app.velar.co)
+- [Bitflow DEX](https://app.bitflow.finance)
+- [Zest Protocol](https://www.zestprotocol.com)
 
-1. **DEX Swaps & Liquidity**: Direct swap execution and liquidity management are coming soon. For now, use the provided DEX UI links (Bitflow, Alex, Velar, Faktory). Swap quotes are fully functional.
-2. **Stacking**: Core stacking contract calls need implementation.
-3. **Price Data**: Limited to major tokens.
-4. **Multi-wallet**: Only supports single wallet currently.
-5. **Hardware Wallets**: Not yet supported.
-
-## Roadmap
-
-### Phase 2
-- [ ] Direct swap execution (Alex, Velar, Bitflow, Faktory)
-- [ ] Liquidity management (add/remove)
-- [ ] Complete stacking contract implementation
-- [ ] Multi-wallet support
-- [ ] Enhanced portfolio tracking
-- [ ] LP position management
-
-### Phase 3
-- [ ] Lending/borrowing (Zest, Granite)
-- [ ] sBTC operations
-- [ ] Hardware wallet support
-- [ ] Automated strategies
-- [ ] Price alerts
-
-## Troubleshooting
-
-### Cannot access or edit `claude_desktop_config.json`
-
-**Problem:** Error when trying to navigate to the config file, or file doesn't exist.
-
-**Solution:**
-
-**On macOS:**
-
-1. **Open the config file directly** (don't use `cd` - it's a file, not a directory):
-   ```bash
-   # Option 1: Open in default text editor
-   open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-   # Option 2: Open with VS Code
-   code ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-   # Option 3: Open with nano
-   nano ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-   # Option 4: View the file
-   cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
-   ```
-
-2. **If the file doesn't exist**, create it:
-   ```bash
-   # Create the directory if needed
-   mkdir -p ~/Library/Application\ Support/Claude
-
-   # Create the file with basic structure
-   echo '{"mcpServers":{}}' > ~/Library/Application\ Support/Claude/claude_desktop_config.json
-
-   # Now edit it
-   open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
-   ```
-
-3. **Verify the file location** (macOS):
-   ```bash
-   # Check if file exists
-   ls -la ~/Library/Application\ Support/Claude/
-   ```
-
-**On Windows:**
-
-1. **Open the config file**:
-   ```powershell
-   # In PowerShell
-   notepad "$env:APPDATA\Claude\claude_desktop_config.json"
-
-   # Or navigate to it in File Explorer:
-   # Press Win+R, paste: %APPDATA%\Claude
-   # Then open claude_desktop_config.json
-   ```
-
-2. **If the file doesn't exist**, create it:
-   ```powershell
-   # Create the directory
-   New-Item -ItemType Directory -Force -Path "$env:APPDATA\Claude"
-
-   # Create the file
-   '{"mcpServers":{}}' | Out-File -FilePath "$env:APPDATA\Claude\claude_desktop_config.json" -Encoding utf8
-
-   # Open it
-   notepad "$env:APPDATA\Claude\claude_desktop_config.json"
-   ```
-
-**On Linux:**
-
-1. **Open the config file**:
-   ```bash
-   # With default editor
-   xdg-open ~/.config/Claude/claude_desktop_config.json
-
-   # With nano
-   nano ~/.config/Claude/claude_desktop_config.json
-   ```
-
-2. **If the file doesn't exist**:
-   ```bash
-   mkdir -p ~/.config/Claude
-   echo '{"mcpServers":{}}' > ~/.config/Claude/claude_desktop_config.json
-   ```
-
-### "MCP Server failed to attach" or "Could not connect to MCP server"
-
-**Problem:** Claude Desktop shows an error that the MCP server failed to start or couldn't attach.
-
-**Common causes:**
-
-1. **Using `node` command with `-y` flag (Wrong!)**
-
-   ❌ **Incorrect:**
-   ```json
-   {
-     "mcpServers": {
-       "stacksagent": {
-         "command": "node",
-         "args": ["-y", "stacks-agent-mcp"]
-       }
-     }
-   }
-   ```
-
-   ✅ **Correct:**
-   ```json
-   {
-     "mcpServers": {
-       "stacksagent": {
-         "command": "npx",
-         "args": ["-y", "stacks-agent-mcp"],
-         "env": {
-           "STACKS_NETWORK": "mainnet"
-         }
-       }
-     }
-   }
-   ```
-
-   > The `-y` flag only works with `npx`, not with `node`!
-
-2. **Package not found**
-   ```bash
-   # Verify the package is installed
-   which stacks-agent-mcp
-
-   # If not found, install it
-   npm install -g stacks-agent-mcp
-   ```
-
-3. **Wrong path in config**
-   ```bash
-   # Test the command directly
-   npx -y stacks-agent-mcp
-   # If this fails, your npm installation may have issues
-   ```
-
-**Solution:**
-1. Open your config file:
-   ```bash
-   open -e ~/Library/Application\ Support/Claude/claude_desktop_config.json
-   ```
-2. Use the correct configuration (see [Configuration](#configuration) section)
-3. Save and completely restart Claude Desktop (Cmd+Q, then reopen)
-
-### Claude Desktop doesn't see the tools
-
-**Common causes and solutions:**
-
-1. **Invalid JSON syntax**
-   - Use a JSON validator: https://jsonlint.com/
-   - Common mistakes: missing commas, trailing commas, unquoted keys
-   - Example of valid JSON:
-   ```json
-   {
-     "mcpServers": {
-       "stacksagent": {
-         "command": "npx",
-         "args": ["-y", "stacks-agent-mcp"],
-         "env": {
-           "STACKS_NETWORK": "mainnet"
-         }
-       }
-     }
-   }
-   ```
-
-2. **Wrong file path (if built from source)**
-   ```bash
-   # On macOS/Linux, get the absolute path:
-   cd /path/to/stacksagent-mcp
-   pwd
-   # Copy the output and append /dist/index.js
-
-   # On Windows:
-   cd C:\path\to\stacksagent-mcp
-   cd
-   # Copy the output and append \dist\index.js
-   ```
-
-3. **Package not installed (if using npm)**
-   ```bash
-   # Verify installation
-   npm list -g stacks-agent-mcp
-
-   # Reinstall if needed
-   npm install -g stacks-agent-mcp
-   ```
-
-4. **Restart Claude Desktop completely**
-   - Quit Claude Desktop completely (don't just close the window)
-   - On macOS: Cmd+Q or right-click dock icon → Quit
-   - On Windows: Right-click system tray → Exit
-   - Wait 5 seconds, then restart
-
-5. **Check the logs**
-   - macOS: `~/Library/Logs/Claude/mcp*.log`
-   - Windows: `%APPDATA%\Claude\logs\mcp*.log`
-   - Linux: `~/.config/Claude/logs/mcp*.log`
-
-   View logs:
-   ```bash
-   # macOS/Linux
-   tail -f ~/Library/Logs/Claude/mcp*.log
-
-   # Windows (PowerShell)
-   Get-Content "$env:APPDATA\Claude\logs\mcp*.log" -Wait
-   ```
-
-### Node.js not found
-
-**Error:** `command not found: node` or `'node' is not recognized`
-
-**Solution:**
-1. Install Node.js 18+ from https://nodejs.org/
-2. Verify installation:
-   ```bash
-   node --version  # Should show v18.0.0 or higher
-   ```
-3. Restart your terminal and Claude Desktop
-
-### "Wallet is locked" error
-
-You need to unlock your wallet first:
-```
-You: Unlock my wallet with password "YourPassword"
-```
-
-### Transaction fails
-
-1. Check your STX balance is sufficient
-2. Verify slippage tolerance isn't too low
-3. Ensure the token pair has liquidity
-4. Try again after a few minutes
-
-### Price data unavailable
-
-Some tokens may not have price data available yet. Major tokens (STX, WELSH, USDA, sBTC) are supported.
-
-### Permission denied errors
-
-**On macOS/Linux:**
-```bash
-# If you get permission errors, try:
-sudo npm install -g stacks-agent-mcp
-
-# Or fix npm permissions (recommended):
-mkdir ~/.npm-global
-npm config set prefix '~/.npm-global'
-echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc  # or ~/.zshrc
-source ~/.bashrc  # or source ~/.zshrc
-```
-
-### Still having issues?
-
-1. **Verify the package is working**:
-   ```bash
-   # Test the CLI directly
-   npx stacks-agent-mcp
-   # Should start the MCP server (press Ctrl+C to exit)
-   ```
-
-2. **Check Claude Desktop is up to date**
-   - Download the latest version from https://claude.ai/download
-
-3. **Report the issue**
-   - GitHub Issues: https://github.com/kai-builder/stacksagent-mcp/issues
-   - Include: OS version, Node.js version, error logs, and your config file (remove sensitive data)
-
-## Publishing to npm (For Maintainers)
-
-To publish a new version to npm:
-
-1. Ensure all changes are committed and tests pass
-
-2. Update version in `package.json`:
-```bash
-npm version patch  # or minor, or major
-```
-
-3. Login to npm (if not already logged in):
-```bash
-npm login
-```
-
-4. Publish the package:
-```bash
-npm publish
-```
-
-5. Push tags to GitHub:
-```bash
-git push --tags
-```
-
-Users can install the latest version via:
-```bash
-npm install -g stacks-agent-mcp
-```
-
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please:
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests (when test infrastructure is ready)
-5. Submit a pull request
+4. Add knowledge entries to appropriate CSV files
+5. Test the search functionality
+6. Submit a pull request
 
-Please ensure your code:
-- Follows the existing code style
-- Includes appropriate error handling
-- Doesn't expose private keys or sensitive data
-- Works on macOS, Windows, and Linux
+## 📄 License
 
-## License
+MIT License - see [LICENSE](LICENSE) file for details
 
-MIT License - see LICENSE file for details
+## 🙏 Acknowledgments
 
-## Disclaimer
-
-This software is provided "as is" without warranty. Use at your own risk. Always verify transactions before confirming. Never share your private keys or mnemonic phrase.
-
-## Support
-
-- GitHub Issues: Report bugs and feature requests on the GitHub repository
-- Stacks Documentation: [https://docs.stacks.co](https://docs.stacks.co)
-- MCP Protocol: [https://modelcontextprotocol.io](https://modelcontextprotocol.io)
-- Stacks Discord: [https://discord.gg/stacks](https://discord.gg/stacks)
-
-## Acknowledgments
-
-Built with:
-- [Model Context Protocol](https://modelcontextprotocol.io) by Anthropic
+Built for the Stacks community with:
 - [Stacks.js](https://github.com/hirosystems/stacks.js) by Hiro Systems
 - [Stacks Blockchain](https://www.stacks.co)
+- [Clarity Language](https://docs.stacks.co/clarity)
+
+## 📞 Support
+
+- GitHub Issues: [Report bugs or request features](https://github.com/kai-builder/stacks-agent/issues)
+- Stacks Discord: [Join the community](https://discord.gg/stacks)
+- Twitter: [@kai_builder](https://twitter.com/kai_builder)
+
+## 🎯 Roadmap
+
+- [x] Multi-platform AI skill support
+- [x] 170+ knowledge base entries
+- [x] BM25 search engine
+- [x] CLI installer
+- [ ] Web-based search interface
+- [ ] VSCode extension
+- [ ] Real-time contract analysis
+- [ ] Community knowledge contributions
+- [ ] Multi-language support
 
 ---
 
-Made with ❤️ for the Stacks community
+**Made with ❤️ for the Stacks community**
+
+*Build Bitcoin-secured dApps with AI assistance*

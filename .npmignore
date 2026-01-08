@@ -1,0 +1,74 @@
+# NPM Ignore - Root Package
+# These files won't be published to npm
+
+# Development files
+src/
+tsconfig.json
+*.ts
+!*.d.ts
+
+# Build artifacts
+.tsbuildinfo
+
+# Development docs
+CLAUDE.md
+PUBLISHING_CHECKLIST.md
+QUICK_PUBLISH.md
+CONVERSION_SUMMARY.md
+skill_convertion.md
+verify-before-publish.sh
+local-md-files/
+README_OLD.md
+README_NEW.md
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test
+test/
+*.test.ts
+
+# MCP specific (keep for backward compatibility)
+# But exclude development files
+.stacks-mcp/
+*.enc
+config.json
+
+# CLI (published separately)
+cli/src/
+cli/tsconfig.json
+cli/node_modules/
+
+# Skill files (not needed in npm, users install via CLI)
+.claude/
+.cursor/
+.windsurf/
+.agent/
+.github/
+.kiro/
+.codex/
+.shared/
+
+# Examples (keep minimal in npm)
+docs/clarity/examples/
+contracts/
+examples/
