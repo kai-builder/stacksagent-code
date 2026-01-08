@@ -34,20 +34,20 @@ An intelligent AI assistant that provides development guidance for Clarity smart
 
 ```bash
 # Install globally
-npm install -g stacks-agent
+npm install -g stacksagent
 
 # Go to your project
 cd /path/to/your/project
 
 # Install for your AI assistant
-stacks-agent init --ai claude      # Claude Code
-stacks-agent init --ai cursor      # Cursor
-stacks-agent init --ai windsurf    # Windsurf
-stacks-agent init --ai antigravity # Antigravity
-stacks-agent init --ai copilot     # GitHub Copilot
-stacks-agent init --ai kiro        # Kiro
-stacks-agent init --ai codex       # OpenAI Codex
-stacks-agent init --ai all         # All platforms
+stacksagent init --ai claude      # Claude Code
+stacksagent init --ai cursor      # Cursor
+stacksagent init --ai windsurf    # Windsurf
+stacksagent init --ai antigravity # Antigravity
+stacksagent init --ai copilot     # GitHub Copilot
+stacksagent init --ai kiro        # Kiro
+stacksagent init --ai codex       # OpenAI Codex
+stacksagent init --ai all         # All platforms
 ```
 
 ### Manual Installation

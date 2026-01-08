@@ -47,8 +47,8 @@ export async function init(options: { ai: string; version?: string; force?: bool
   console.log(chalk.blue(`\n✨ Stacks Agent skill installed successfully!\n`));
   console.log(chalk.gray('Usage:'));
   console.log(chalk.gray('  Claude Code: Skill activates automatically on Stacks tasks'));
-  console.log(chalk.gray('  Cursor/Windsurf: Use /stacks-agent command'));
-  console.log(chalk.gray('  Copilot: Use @stacks-agent in chat\n'));
+  console.log(chalk.gray('  Cursor/Windsurf: Use /stacksagent command'));
+  console.log(chalk.gray('  Copilot: Use @stacksagent in chat\n'));
   console.log(chalk.gray('Search knowledge base:'));
   console.log(chalk.gray('  python3 .claude/skills/stacks-agent/scripts/search.py "query"\n'));
 }

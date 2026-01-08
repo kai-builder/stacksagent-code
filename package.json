@@ -47,12 +47,12 @@
   "author": "kai-builder",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kai-builder/stacks-agent.git"
+    "url": "git+https://github.com/kai-builder/stacksagent.git"
   },
   "bugs": {
-    "url": "https://github.com/kai-builder/stacks-agent/issues"
+    "url": "https://github.com/kai-builder/stacksagent/issues"
   },
-  "homepage": "https://github.com/kai-builder/stacks-agent#readme",
+  "homepage": "https://github.com/kai-builder/stacksagent#readme",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
