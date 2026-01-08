@@ -1,0 +1,11 @@
+id,category,name,description,code,contract,notes
+1,resolve,name-to-address,"Resolve BNS name to address","(contract-call? .bns name-resolve namespace name)","SP000000000000000000002Q6VF78.bns","Returns principal of name owner"
+2,resolve,address-to-name,"Get primary name for address","(contract-call? .bns resolve-principal address)","SP000000000000000000002Q6VF78.bns","Returns primary BNS name"
+3,register,register-name,"Register a new BNS name","(contract-call? .bns-v2 name-register namespace name salt zonefile-hash)","BNS-V2 contract","Requires STX payment based on name length"
+4,transfer,transfer-name,"Transfer BNS name ownership","(contract-call? .bns-v2 name-transfer namespace name new-owner zonefile-hash)","BNS-V2 contract","Owner only can transfer names"
+5,update,update-zonefile,"Update name zonefile hash","(contract-call? .bns-v2 name-update namespace name zonefile-hash)","BNS-V2 contract","Updates DNS records for name"
+6,lookup,name-info,"Get name details","(contract-call? .bns name-resolve namespace name)","SP000000000000000000002Q6VF78.bns","Returns owner zonefile-hash lease-ending-at"
+7,lookup,get-namespace-price,"Get registration price","(contract-call? .bns-v2 get-namespace-price namespace)","BNS-V2 contract","Price in microSTX"
+8,lookup,can-name-be-registered,"Check name availability","(contract-call? .bns-v2 can-name-be-registered namespace name)","BNS-V2 contract","Returns true if available"
+9,bulk,batch-register,"Register multiple names","(map register-single-name names)","Custom contract","Loop through list of names"
+10,renew,renew-name,"Renew name registration","(contract-call? .bns-v2 name-renewal namespace name)","BNS-V2 contract","Extends lease period"

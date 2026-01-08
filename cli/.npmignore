@@ -1,0 +1,36 @@
+# NPM Ignore - CLI Package
+# Only publish compiled code and assets
+
+# Source files (keep dist only)
+src/
+*.ts
+!*.d.ts
+tsconfig.json
+
+# Development
+node_modules/
+*.log
+npm-debug.log*
+
+# Git
+.git/
+.gitignore
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+test/
+*.test.ts
+
+# Keep only:
+# - dist/
+# - package.json
+# - README.md (if exists)
+# - LICENSE (if exists)
