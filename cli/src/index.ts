@@ -8,7 +8,7 @@ import { versions } from './commands/versions';
 const program = new Command();
 
 program
-  .name('stacks-agent')
+  .name('stacksagent')
   .description('AI Skill for building Stacks blockchain applications')
   .version('1.0.0');
 

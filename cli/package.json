@@ -1,9 +1,9 @@
 {
-  "name": "stacks-agent",
+  "name": "stacksagent",
   "version": "1.0.0",
   "description": "AI Skill for building Stacks blockchain applications - CLI installer",
   "bin": {
-    "stacks-agent": "./dist/index.js"
+    "stacksagent": "./dist/index.js"
   },
   "files": [
     "dist",
@@ -31,14 +31,17 @@
   ],
   "author": "kai-builder",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kai-builder/stacks-agent.git"
+    "url": "git+https://github.com/kai-builder/stacksagent.git"
   },
   "bugs": {
-    "url": "https://github.com/kai-builder/stacks-agent/issues"
+    "url": "https://github.com/kai-builder/stacksagent/issues"
   },
-  "homepage": "https://github.com/kai-builder/stacks-agent#readme",
+  "homepage": "https://github.com/kai-builder/stacksagent#readme",
   "dependencies": {
     "commander": "^11.0.0",
     "fs-extra": "^11.0.0",
