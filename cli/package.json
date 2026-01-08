@@ -1,0 +1,55 @@
+{
+  "name": "stacks-agent",
+  "version": "1.0.0",
+  "description": "AI Skill for building Stacks blockchain applications - CLI installer",
+  "bin": {
+    "stacks-agent": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "cp -r src/assets dist/",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "stacks",
+    "clarity",
+    "blockchain",
+    "ai",
+    "skill",
+    "claude",
+    "cursor",
+    "copilot",
+    "bitcoin",
+    "web3",
+    "smart-contracts"
+  ],
+  "author": "kai-builder",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kai-builder/stacks-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kai-builder/stacks-agent/issues"
+  },
+  "homepage": "https://github.com/kai-builder/stacks-agent#readme",
+  "dependencies": {
+    "commander": "^11.0.0",
+    "fs-extra": "^11.0.0",
+    "chalk": "^4.1.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
