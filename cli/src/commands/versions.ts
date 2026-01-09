@@ -8,7 +8,7 @@ export async function versions() {
   console.log(chalk.blue('\n📦 Stacks Agent versions:\n'));
 
   try {
-    const { stdout } = await execAsync('npm view stacks-agent versions --json');
+    const { stdout } = await execAsync('npm view stacksagent versions --json');
     const versionList = JSON.parse(stdout);
 
     console.log(chalk.gray('Available versions:'));
@@ -23,7 +23,7 @@ export async function versions() {
     }
 
     console.log(chalk.gray('Install specific version:'));
-    console.log(chalk.gray('  npm install -g stacks-agent@<version>\n'));
+    console.log(chalk.gray('  npm install -g stacksagent@<version>\n'));
   } catch (error) {
     console.log(chalk.red(`\n❌ Failed to fetch versions: ${error}\n`));
   }
