@@ -41,7 +41,7 @@ This skill includes searchable databases for:
 - **14 Contract templates** - FT, NFT, DAO, Vault, Marketplace, Stacking
 - **15 Security patterns** - Common vulnerabilities and fixes
 - **15 DeFi protocols** - Alex, Velar, Bitflow, Zest, StackingDAO, Boost, Faktory
-- **67 Stacks.js snippets** - Wallet connection UX, transactions, API calls, React hooks, server-side patterns
+- **72 Stacks.js snippets** - Production wallet patterns (connect, getLocalStorage, isConnected), transactions, API calls, React hooks, server-side patterns
 - **10 BNS operations** - Name registration and resolution
 - **15 Stacking guides** - PoX stacking and delegation
 - **25 Deployment steps** - Testnet, mainnet, and devnet
@@ -57,7 +57,7 @@ Analyze user request to determine:
 
 ### Step 2: Search Knowledge Base
 ```bash
-python3 .claude/skills/stacks-agent/scripts/search.py "<query>" --domain <domain>
+python3 .shared/stacks-agent/scripts/search.py "<query>" --domain <domain>
 ```
 
 Available domains:

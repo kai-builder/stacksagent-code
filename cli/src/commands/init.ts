@@ -3,13 +3,13 @@ import path from 'path';
 import chalk from 'chalk';
 
 const PLATFORMS = {
-  claude: ['.claude/skills/stacks-agent'],
-  cursor: ['.cursor/commands', '.shared/stacks-agent'],
-  windsurf: ['.windsurf/workflows', '.shared/stacks-agent'],
-  antigravity: ['.agent/workflows', '.shared/stacks-agent'],
-  copilot: ['.github/prompts', '.shared/stacks-agent'],
-  kiro: ['.kiro/steering', '.shared/stacks-agent'],
-  codex: ['.codex/skills/stacks-agent'],
+  claude: ['.shared/stacks-agent', '.claude/skills/stacks-agent'],
+  cursor: ['.shared/stacks-agent', '.cursor/commands'],
+  windsurf: ['.shared/stacks-agent', '.windsurf/workflows'],
+  antigravity: ['.shared/stacks-agent', '.agent/workflows'],
+  copilot: ['.shared/stacks-agent', '.github/prompts'],
+  kiro: ['.shared/stacks-agent', '.kiro/steering'],
+  codex: ['.shared/stacks-agent', '.codex/skills/stacks-agent'],
   all: [] as string[] // Special case: all platforms
 };
 
@@ -50,5 +50,5 @@ export async function init(options: { ai: string; version?: string; force?: bool
   console.log(chalk.gray('  Cursor/Windsurf: Use /stacksagent command'));
   console.log(chalk.gray('  Copilot: Use @stacksagent in chat\n'));
   console.log(chalk.gray('Search knowledge base:'));
-  console.log(chalk.gray('  python3 .claude/skills/stacks-agent/scripts/search.py "query"\n'));
+  console.log(chalk.gray('  python3 .shared/stacks-agent/scripts/search.py "query"\n'));
 }
