@@ -1,6 +1,6 @@
 {
   "name": "stacks-agent",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "AI Skill for building Stacks blockchain applications - works with Claude Code, Cursor, Windsurf, Copilot, and more",
   "main": "dist/mcp/index.js",
   "type": "module",
