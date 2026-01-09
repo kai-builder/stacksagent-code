@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { init } from './commands/init';
 import { update } from './commands/update';
 import { versions } from './commands/versions';
+
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
 
 const program = new Command();
 
 program
   .name('stacksagent')
   .description('AI Skill for building Stacks blockchain applications')
-  .version('1.0.0');
+  .version(packageJson.version);
 
 program
   .command('init')
