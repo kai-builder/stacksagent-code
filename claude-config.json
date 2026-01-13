@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "stacks": {
+      "command": "node",
+      "args": ["/Volumes/Projects/DATA/SideProjects/stacksagent-mcp/stacksagent-code/dist/index.js"],
+      "env": {
+        "STACKS_NETWORK": "mainnet"
+      }
+    }
+  }
+}

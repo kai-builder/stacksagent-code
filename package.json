@@ -1,0 +1,90 @@
+{
+  "name": "stacks-agent",
+  "version": "1.2.3",
+  "description": "AI Skill for building Stacks blockchain applications - works with Claude Code, Cursor, Windsurf, Copilot, and more",
+  "main": "dist/mcp/index.js",
+  "type": "module",
+  "bin": {
+    "stacks-agent-mcp": "dist/mcp/index.js",
+    "stacks-agent-api": "dist/api/index.js"
+  },
+  "exports": {
+    ".": "./dist/mcp/index.js",
+    "./core": "./dist/core/index.js",
+    "./api": "./dist/api/index.js"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepare": "npm run build",
+    "start": "node dist/mcp/index.js",
+    "mcp": "node dist/mcp/index.js",
+    "api": "node dist/api/index.js",
+    "dev:mcp": "npx ts-node --esm src/mcp/index.ts",
+    "dev:api": "npx ts-node --esm src/api/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "stacks",
+    "blockchain",
+    "defi",
+    "claude",
+    "model-context-protocol",
+    "stx",
+    "bitcoin",
+    "web3",
+    "clarity",
+    "smart-contracts",
+    "bns",
+    "stacking"
+  ],
+  "author": "kai-builder",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kai-builder/stacksagent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kai-builder/stacksagent/issues"
+  },
+  "homepage": "https://github.com/kai-builder/stacksagent#readme",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@bitflowlabs/core-sdk": "^2.4.0",
+    "@faktoryfun/core-sdk": "^0.3.8",
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@pythnetwork/hermes-client": "^2.1.0",
+    "@stacks/encryption": "^6.16.1",
+    "@stacks/network": "^6.16.1",
+    "@stacks/stacks-blockchain-api-types": "^7.12.0",
+    "@stacks/transactions": "^6.16.1",
+    "@stacks/wallet-sdk": "^7.2.0",
+    "@velarprotocol/velar-sdk": "^0.7.6",
+    "alex-sdk": "^3.2.1",
+    "axios": "^1.7.9",
+    "bip39": "^3.1.0",
+    "bns-v2-sdk": "^2.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^5.2.1",
+    "tslib": "^2.7.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

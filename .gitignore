@@ -1,0 +1,27 @@
+node_modules/
+dist/
+*.log
+.env
+.DS_Store
+*.enc
+config.json
+.stacks-mcp/
+
+# OS files
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Development/internal docs
+install-claude.sh
+PRD.md
+PUBLISHING_CHECKLIST.md
+QUICKSTART.md
+PRD_DOCS/
+scripts/
+local-md-files/
+CLAUDE.md
