@@ -2907,3 +2907,135 @@ function sessionMiddleware(req, res, next) {
 - Forgetting cleanup causes memory leaks
 - Not binding session to wallet address (session hijacking)
 - Using weak session ID generation (predictable IDs)",https://github.com/stx-city/deploy-stx-city/blob/main/src/store/StacksStore.ts,"authentication.csv:2,authentication.csv:9,security-patterns.csv:1,security-patterns.csv:4","authentication,session,redis,security,cookies,best-practice,intermediate",intermediate
+41,deployment,quickstart,deploy-contract-with-fees,Deploy Clarity contract to mainnet with post-condition protection,"// Production contract deployment from STX City deploy page
+// Pattern from /Volumes/Projects/STXCITY/deploy-stx-city/src/app/deploy/create/page.tsx
+
+import { request } from '@stacks/connect';
+import { Pc, PostConditionMode } from '@stacks/transactions';
+
+// Option 1: Deploy with STX payment
+async function deployContractWithSTX(
+  walletAddress: string,
+  contractName: string,
+  clarityCode: string,
+  deployFee: number = 2000000 // 2 STX in micro-STX
+) {
+  // Create post-condition: Wallet will send at most deployFee STX
+  const sendSTXPostCondition = Pc.principal(walletAddress)
+    .willSendLte(deployFee)
+    .ustx();
+
+  const deployResponse = await request('stx_deployContract', {
+    name: contractName,
+    clarityCode: clarityCode,
+    clarityVersion: 3,
+    network: 'mainnet',
+    postConditions: [sendSTXPostCondition],
+    postConditionMode: 'deny',
+    fee: 100000 // Transaction fee (0.1 STX)
+  });
+
+  if (deployResponse) {
+    console.log('✅ Contract deployed successfully!');
+    console.log('Transaction ID:', deployResponse.txid);
+    console.log('View at:', `https://explorer.hiro.so/txid/${deployResponse.txid}?chain=mainnet`);
+    return deployResponse.txid;
+  }
+}
+
+// Option 2: Deploy with token payment (e.g., WELSH, VELAR)
+async function deployContractWithToken(
+  walletAddress: string,
+  contractName: string,
+  clarityCode: string,
+  tokenContractId: string, // e.g., 'SP3NE50GEXFG9SZGTT51P40X2CKYSZ5CC4ZTZ7A2G.welshcorgicoin-token'
+  assetName: string, // e.g., 'welshcorgicoin'
+  tokenAmount: number, // Token amount with decimals
+) {
+  // Create post-condition: Wallet will send at most tokenAmount of token
+  const sendFTCondition = Pc.principal(walletAddress)
+    .willSendLte(tokenAmount)
+    .ft(tokenContractId, assetName);
+
+  const deployResponse = await request('stx_deployContract', {
+    name: contractName,
+    clarityCode: clarityCode,
+    clarityVersion: 3,
+    network: 'mainnet',
+    postConditions: [sendFTCondition],
+    postConditionMode: 'deny',
+    fee: 100000
+  });
+
+  if (deployResponse) {
+    console.log('✅ Contract deployed with token payment!');
+    console.log('Transaction ID:', deployResponse.txid);
+    return deployResponse.txid;
+  }
+}
+
+// Example usage: Deploy SIP-010 token contract
+async function deploySIP10Token() {
+  const walletAddress = 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR';
+  const contractName = 'my-awesome-token';
+  
+  // Sample SIP-010 contract code (simplified)
+  const clarityCode = `
+;; SIP-010 Token Contract
+(impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+(define-fungible-token my-token u1000000000)
+(define-constant contract-owner tx-sender)
+
+(define-read-only (get-name)
+  (ok ""My Awesome Token""))
+
+(define-read-only (get-symbol)
+  (ok ""MAT""))
+
+(define-read-only (get-decimals)
+  (ok u6))
+
+(define-read-only (get-balance (who principal))
+  (ok (ft-get-balance my-token who)))
+
+(define-read-only (get-total-supply)
+  (ok (ft-get-supply my-token)))
+
+(define-public (transfer (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34))))
+  (begin
+    (asserts! (is-eq tx-sender sender) (err u4))
+    (try! (ft-transfer? my-token amount sender recipient))
+    (match memo to-print (print to-print) 0x)
+    (ok true)
+  ))
+
+;; Mint initial supply to contract owner
+(try! (ft-mint? my-token u1000000000 contract-owner))
+`;
+
+  // Deploy with 2 STX fee
+  const txId = await deployContractWithSTX(
+    walletAddress,
+    contractName,
+    clarityCode,
+    2000000 // 2 STX
+  );
+  
+  return txId;
+}
+
+// Production pattern from STX City: Convert name to valid contract slug
+function convertToSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}","Production contract deployment pattern from STX City. Uses request('stx_deployContract', ...) with post-conditions to protect against excessive spending. Supports both STX and token payment methods. Always uses PostConditionMode.Deny for security.","{""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""contractName"": ""my-token"", ""clarityCode"": ""(define-fungible-token...)"", ""network"": ""mainnet"", ""deployFee"": 2000000}","{""txid"": ""0xabc123..."", ""success"": true, ""explorerUrl"": ""https://explorer.hiro.so/txid/0xabc123...?chain=mainnet"", ""contractAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.my-token""}","- Forgetting post-conditions allows unlimited spending
+- Using PostConditionMode.Allow instead of Deny (security risk)
+- Not converting contract name to valid slug (deployment fails)
+- Setting fee too low causes transaction to be rejected
+- Forgetting clarityVersion parameter defaults to Clarity 2
+- Not handling deployResponse being null/undefined
+- Using testnet contract addresses on mainnet
+- Contract name must be lowercase alphanumeric + hyphens only",https://github.com/stx-city/deploy-stx-city/blob/main/src/app/deploy/create/page.tsx,"deployment.csv:1,deployment.csv:2,fungible-tokens.csv:1,security-patterns.csv:1","deploy,contract,stx_deployContract,post-conditions,mainnet,fees,security,quickstart,beginner",beginner
