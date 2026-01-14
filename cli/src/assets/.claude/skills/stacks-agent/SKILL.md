@@ -1,7 +1,7 @@
 ---
 name: stacks-agent
-description: AI-powered intelligence for building Stacks blockchain applications
-version: 1.1.4
+description: AI-powered intelligence for building Stacks blockchain applications with 40 production code examples
+version: 2.0.0
 author: kai-builder
 triggers:
   - stacks
@@ -17,6 +17,9 @@ triggers:
   - bns
   - bitcoin
   - web3
+  - wallet connect
+  - pyth oracle
+  - marketplace
 ---
 
 # Stacks Agent Skill
@@ -25,26 +28,49 @@ AI-powered development intelligence for building on Stacks blockchain - Bitcoin'
 
 ## Capabilities
 
+### Core Features
 - **Clarity Contracts**: Generate, audit, and deploy smart contracts
 - **Token Standards**: SIP-010 (fungible) and SIP-009 (NFT) templates
 - **DeFi Integration**: Alex, Velar, Bitflow, Zest, Boost, Faktory protocol patterns
 - **Security Analysis**: Vulnerability detection and best practices
-- **Stacks.js**: Frontend integration code snippets
+- **Stacks.js**: Frontend integration with modern @stacks/connect v7+ API
 - **BNS**: Bitcoin Name System operations
 - **Stacking**: PoX stacking and pool delegation
 - **Deployment**: Testnet and mainnet deployment guides
 
+### New in v2.0 🎉
+- **🎯 40 Production Code Examples**: Complete working code from live dApps (sbtc-market, stacksagent, STX City)
+- **🕸️ 100 Knowledge Relationships**: Connected concepts showing dependencies and prerequisites
+- **🚫 Zero Deprecated Code**: All examples use modern API patterns (no openContractCall, showConnect, or Gaia)
+- **🔒 Security-First**: All examples include post-conditions, error handling, and common pitfalls
+- **🐛 Debugging Examples**: Real-world troubleshooting for failed transactions
+
 ## Knowledge Base
 
-This skill includes searchable databases for:
+### Code Snippets (495+ entries)
 - **61 Clarity functions** - Complete language reference
 - **14 Contract templates** - FT, NFT, DAO, Vault, Marketplace, Stacking
 - **15 Security patterns** - Common vulnerabilities and fixes
-- **15 DeFi protocols** - Alex, Velar, Bitflow, Zest, StackingDAO, Boost, Faktory
-- **76 Stacks.js snippets** - Production wallet patterns (STX/BTC addresses, connect, getLocalStorage, isConnected), transactions, API calls, React hooks, server-side patterns
-- **10 BNS operations** - Name registration and resolution
-- **15 Stacking guides** - PoX stacking and delegation
+- **25 DeFi protocols** - Alex, Velar, Bitflow, Zest, StackingDAO, Boost, Faktory
+- **76 Stacks.js snippets** - Modern @stacks/connect v7+ patterns (wallet, transactions, post-conditions)
+- **21 BNS operations** - Name registration and resolution (Clarity + JS + API)
+- **25 Stacking guides** - PoX stacking and delegation (Clarity + JS + API)
+- **30 Oracle integration** - Pyth Network price feeds with VAA handling (Clarity + JS + API)
 - **25 Deployment steps** - Testnet, mainnet, and devnet
+
+### Production Examples (40 examples - NEW in v2.0)
+- **10 DeFi examples** - Swaps, liquidity, oracles, stacking, bonding curves, debugging
+- **10 NFT examples** - Minting, marketplace, royalties, metadata, batch operations, debugging
+- **8 Token examples** - SIP-010, vesting, allowances, burns, multi-token swaps
+- **7 Security examples** - Reentrancy, overflow, access control, rate limiting
+- **5 Auth examples** - Wallet connect, JWT, sessions, NFT gating (**No Gaia** - deprecated)
+
+### Knowledge Relationships (100 relationships - NEW in v2.0)
+- **requires** - Critical dependencies (e.g., "swap requires ft-transfer")
+- **uses** - Functional dependencies (e.g., "DEX uses post-conditions")
+- **javascript-for** - Language bridges (e.g., "SDK implements Clarity function")
+- **prevents** - Security defenses (e.g., "access control prevents unauthorized access")
+- **And 5 more relationship types** connecting concepts across domains
 
 ## Workflow
 
@@ -56,18 +82,36 @@ Analyze user request to determine:
 - Target network (testnet/mainnet)
 
 ### Step 2: Search Knowledge Base
+
+**Code Snippets:**
 ```bash
 python3 .shared/stacks-agent/scripts/search.py "<query>" --domain <domain>
+```
+
+**Production Examples (v2.0):**
+```bash
+python3 .shared/stacks-agent/scripts/search.py "how to swap" --examples
+python3 .shared/stacks-agent/scripts/search.py "marketplace" --domain nfts --examples
+python3 .shared/stacks-agent/scripts/search.py "token" --difficulty beginner --examples
+```
+
+**With Relationships (v2.0):**
+```bash
+python3 .shared/stacks-agent/scripts/search.py "swap tokens" --include-relationships
 ```
 
 Available domains:
 - `clarity` - Clarity syntax and functions
 - `templates` - Contract templates
 - `security` - Security patterns
-- `defi` - DeFi protocol integrations
+- `defi` - DeFi protocol integrations (swaps, liquidity, oracles)
+- `nfts` - NFT operations (minting, marketplace, royalties)
+- `tokens` - Token operations (SIP-010, vesting, allowances)
+- `auth` - Authentication (wallet connect, JWT, sessions - **No Gaia**)
 - `stacksjs` - Stacks.js code snippets
 - `bns` - BNS operations
 - `stacking` - PoX stacking
+- `oracles` - Pyth Network price feeds
 - `deployment` - Deployment guides
 - `auto` - Auto-detect domain (default)
 
@@ -207,6 +251,16 @@ python3 scripts/search.py "stx transfer" --domain stacksjs -f json
 ```
 
 ## Version History
+
+- **2.0.0** (2026-01): Major update with production code and relationships
+  - ✅ 40 production code examples from live dApps
+  - ✅ 100 knowledge graph relationships
+  - ✅ Modern @stacks/connect v7+ API patterns
+  - ✅ Deprecated code removal (Gaia, openContractCall, showConnect)
+  - ✅ Security-first examples with post-conditions
+  - ✅ Debugging examples for failed transactions
+  - ✅ Pyth Network oracle integration (30 entries)
+  - ✅ Expanded to 495+ knowledge base entries
 
 - **1.0.0** (2025-01): Initial release with 170+ knowledge entries
   - Clarity syntax and functions

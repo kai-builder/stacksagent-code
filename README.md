@@ -15,6 +15,12 @@ An intelligent AI assistant that provides development guidance for Clarity smart
 
 ## ✨ Features
 
+**v2.0 Highlights:**
+- 🎯 **40 Production Code Examples** - Real code from live dApps (sbtc-market, stacksagent, STX City)
+- 🕸️ **100 Knowledge Relationships** - Connected concepts across domains
+- 🚫 **Zero Deprecated Code** - All modern @stacks/connect v7+ API patterns
+- 🔒 **Security-First Examples** - Post-conditions, error handling, real vulnerabilities
+
 **495+ Knowledge Base Entries Across 15 Domains:**
 
 ### Core Language & Tools (175 entries)
@@ -29,7 +35,7 @@ An intelligent AI assistant that provides development guidance for Clarity smart
 - **🔄 25 DeFi Protocols** - Alex, Velar, Bitflow, Zest, StackingDAO (Clarity + JS + API)
 - **🎨 30 NFT Operations** - SIP-009, minting, marketplace patterns (Clarity + JS + API)
 - **💎 40 Token Operations** - SIP-010 fungible tokens, DeFi integrations (Clarity + JS + API)
-- **🔐 14 Authentication** - Gaia storage, wallet auth, JWT, token-gating (Clarity + JS + API)
+- **🔐 14 Authentication** - Wallet auth, JWT, sessions, token-gating (**No Gaia** - deprecated) (Clarity + JS + API)
 - **📊 30 Oracle Integration** - Pyth Network price feeds, VAA handling, Hermes API (Clarity + JS + API)
 
 ### Advanced & Specialized (135 entries)
@@ -88,10 +94,10 @@ Copy the appropriate folders to your project:
 
 ### Claude Code
 
-The skill activates automatically when you request Stacks development work:
+The skill activates automatically when you request Stacks development work, tag or mention the `stacksagent`
 
 ```
-Create a meme token called PEPE with 1 billion supply
+Create a meme token called PEPE with 1 billion supply @stacksagent
 ```
 
 ### Cursor / Windsurf / Antigravity
@@ -112,15 +118,29 @@ Reference in chat:
 
 ## 💡 Example Prompts
 
+**Basic Queries:**
 ```
 "Create a SIP-010 token with burn mechanism"
 "Build an NFT collection with royalties"
 "Audit this Clarity contract for security issues"
-"Show me how to integrate Alex swap in my dApp"
-"How do I get BTC/USD price from Pyth oracle?"
 "Deploy my contract to testnet"
-"How do I implement stacking in my app?"
-"Generate a DAO contract with proposal voting"
+```
+
+**Production Code Examples (New in v2.0):**
+```
+"Show me a complete working example of swapping tokens with slippage protection"
+"How do I connect a wallet using the new @stacks/connect v7 API?"
+"Give me production code for NFT marketplace listing"
+"Show me how to integrate Pyth oracle for BTC/USD price"
+"How do I implement JWT authentication with wallet signatures?"
+"Show me a secure token transfer with post-conditions"
+```
+
+**With Relationships:**
+```
+"What are the dependencies for implementing a token swap?"
+"Show me all security patterns related to NFT marketplace"
+"What JavaScript SDK functions implement Clarity stacking?"
 ```
 
 ## 🔍 Knowledge Base Search
@@ -145,12 +165,132 @@ python3 .claude/skills/stacks-agent/scripts/search.py "stx transfer" --domain st
 - `clarity` - Syntax and functions
 - `templates` - Contract templates
 - `security` - Security patterns
-- `defi` - DeFi protocols
+- `defi` - DeFi protocols (swaps, liquidity, stacking, oracles)
+- `nfts` - NFT operations (minting, marketplace, royalties)
+- `tokens` - Token operations (SIP-010, vesting, allowances)
+- `auth` - Authentication (wallet connect, JWT, sessions)
 - `stacksjs` - JavaScript snippets
 - `bns` - BNS operations
 - `stacking` - Stacking guides
 - `deployment` - Deployment steps
 - `auto` - Auto-detect (default)
+
+## 🎯 Production Code Examples (New in v2.0)
+
+Search 40 complete, production-tested code examples extracted from live dApps:
+
+```bash
+# Search examples
+python3 .claude/skills/stacks-agent/scripts/search.py "how to swap" --examples
+
+# Filter by domain
+python3 .claude/skills/stacks-agent/scripts/search.py "marketplace" --domain nfts --examples
+
+# Filter by difficulty
+python3 .claude/skills/stacks-agent/scripts/search.py "token" --difficulty beginner --examples
+
+# Search specific example type
+python3 .claude/skills/stacks-agent/scripts/search.py "debug" --example-type debugging
+```
+
+### Example Types
+- **quickstart** - Single-feature examples (8 examples)
+- **integration** - Multi-step workflows (12 examples)
+- **debugging** - Troubleshooting failed transactions (3 examples)
+- **best-practice** - Recommended patterns (3 examples)
+- **security** - Security-focused implementations (2 examples)
+
+### Example Coverage
+
+**DeFi (10 examples)**:
+- Swap with slippage protection (sbtc-market-frontend)
+- Add/remove liquidity (prediction markets)
+- Pyth oracle integration with VAA
+- Delegate stacking to PoX pools
+- Bonding curve buys (STX City)
+- Multi-hop swap routing
+- Debug failed swaps
+- Secure token approvals
+
+**NFT (10 examples)**:
+- Mint/transfer with SIP-009 compliance
+- Marketplace listing and buying (Gamma patterns)
+- NFT royalties (EIP-2981-like)
+- Batch minting for airdrops
+- Dynamic metadata updates
+- Collection launch workflows
+- Debug transfer failures
+- Secure marketplace with escrow
+
+**Tokens (8 examples)**:
+- Deploy SIP-010 tokens
+- Secure transfers with post-conditions
+- Token allowances (DEX integration)
+- Vesting schedules with cliff periods
+- Token burns (deflationary mechanics)
+- Multi-token atomic swaps
+- Debug transfer failures
+
+**Security (7 examples)**:
+- Reentrancy prevention
+- Integer overflow protection
+- Access control (RBAC)
+- Input validation
+- Rate limiting for DoS
+- Secure randomness
+- Privilege escalation prevention
+
+**Auth (5 examples)**:
+- Wallet connect flow (sbtc-market)
+- JWT authentication via signatures (stacksagent)
+- Protected routes with persistence (STX City)
+- NFT token gating
+- Session management with cleanup
+
+### Example Output Format
+
+Each example includes:
+- ✅ **Complete working code** from production dApps
+- ✅ **Test inputs/outputs** with valid JSON
+- ✅ **Common pitfalls** from real bugs
+- ✅ **Live example URLs** to actual code
+- ✅ **Modern API patterns** (@stacks/connect v7+)
+- ✅ **Security best practices** (post-conditions, deny mode)
+
+## 🕸️ Knowledge Graph Relationships (New in v2.0)
+
+100 relationships connect concepts across domains:
+
+```bash
+# Get related entries for top results
+python3 .claude/skills/stacks-agent/scripts/search.py "swap tokens" --include-relationships
+
+# Export relationship graph
+python3 -c "from scripts.relationships import get_graph; print(get_graph().export_graph('mermaid'))"
+```
+
+### Relationship Types
+- **requires** - Critical dependency (e.g., "swap requires ft-transfer")
+- **uses** - Functional dependency (e.g., "DEX uses post-conditions")
+- **implements** - Standard compliance (e.g., "token implements SIP-010")
+- **javascript-for** - Language bridge (e.g., "SDK implements Clarity function")
+- **prevents** - Security defense (e.g., "access control prevents unauthorized access")
+- **similar-to** - Alternative approach
+- **conflicts** - Incompatibility
+- **complements** - Enhanced together
+
+### Example Output
+
+```
+Search: "name-to-address"
+
+Result: bns:1 - name-to-address function
+
+📚 Related Entries:
+  [requires] clarity-syntax:59 (strength: 10) - Uses contract-call?
+  [javascript-for] bns:12 (strength: 10) - SDK implements resolution
+  [uses] security-patterns:1 (strength: 8) - Needs access control
+```
 
 ## 📚 Knowledge Base Contents
 
@@ -257,15 +397,26 @@ Built for the Stacks community with:
 
 ## 🎯 Roadmap
 
-- [x] Multi-platform AI skill support
-- [x] 170+ knowledge base entries
-- [x] BM25 search engine
+### Completed (v2.0) ✅
+- [x] Multi-platform AI skill support (7 platforms)
+- [x] 495+ knowledge base entries
+- [x] BM25 search engine with regex boosting
 - [x] CLI installer
+- [x] 40 production code examples from live dApps
+- [x] 100 knowledge graph relationships
+- [x] Modern API patterns (@stacks/connect v7+)
+- [x] Deprecated code removal (Gaia, openContractCall, showConnect)
+
+### In Progress (v2.1)
 - [ ] Web-based search interface
+- [ ] Interactive example playground
+- [ ] Community example contributions
+
+### Future (v3.0+)
 - [ ] VSCode extension
 - [ ] Real-time contract analysis
-- [ ] Community knowledge contributions
-- [ ] Multi-language support
+- [ ] Semantic search with embeddings
+- [ ] Multi-language support (Chinese, Spanish)
 
 ---
 

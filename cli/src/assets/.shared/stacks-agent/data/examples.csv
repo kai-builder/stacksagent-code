@@ -1,0 +1,2909 @@
+id,domain,example_type,scenario,problem,solution_code,explanation,test_inputs,expected_outputs,pitfalls,live_example_url,related_snippets,tags,difficulty
+1,defi,integration,swap-with-slippage,Execute token swap on Alex DEX with slippage protection to prevent sandwich attacks,"// Production swap pattern from sbtc-market-frontend/src/lib/contract.ts
+import { request } from '@stacks/connect';
+import { uintCV, contractPrincipalCV, cvToHex } from '@stacks/transactions';
+
+async function swapWithSlippageProtection() {
+  const { contractAddress, contractName } = {
+    contractAddress: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9',
+    contractName: 'amm-swap-pool-v1-1'
+  };
+  
+  // Token addresses
+  const tokenX = 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.token-wstx';
+  const tokenY = 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token';
+  
+  // Swap 1 STX (1000000 micro-STX)
+  const amountIn = 1000000;
+  
+  // Accept 1% slippage (minAmountOut = 99% of expected)
+  const minAmountOut = 990000;
+  
+  // Build function arguments
+  const args = [
+    contractPrincipalCV(tokenX.split('.')[0], tokenX.split('.')[1]),
+    contractPrincipalCV(tokenY.split('.')[0], tokenY.split('.')[1]),
+    uintCV(amountIn),
+    uintCV(minAmountOut)
+  ];
+  
+  // Execute contract call using NEW API
+  return request('stx_callContract', {
+    contract: `${contractAddress}.${contractName}`,
+    functionName: 'swap-helper',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',  // Always use 'deny' for security
+    network: 'mainnet'
+  });
+}
+
+// Real-world usage from sbtc-market-frontend
+export async function openSwapShares(
+  marketId: number | bigint,
+  fromSide: boolean,
+  amountIn: number | bigint
+) {
+  const args = [
+    uintCV(BigInt(marketId)),
+    boolCV(fromSide),
+    uintCV(BigInt(amountIn))
+  ];
+  
+  return request('stx_callContract', {
+    contract: 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.prediction-market-v1',
+    functionName: 'swap-shares',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'allow',  // Or 'deny' with post-conditions
+    network: 'mainnet'
+  });
+}","Production swap implementation from sbtc-market-frontend. Demonstrates correct usage of request('stx_callContract', ...) with .map(cvToHex) for function arguments. Includes real contract addresses and slippage protection.","{""amountIn"": 1000000, ""minAmountOut"": 990000, ""tokenXContract"": ""SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.token-wstx"", ""tokenYContract"": ""SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token""}","{""txId"": ""0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"", ""success"": true, ""actualAmountOut"": 995000, ""slippagePercent"": 0.5}","- Forgetting .map(cvToHex) on functionArgs causes 'Invalid hex' errors
+- Using deprecated openContractCall instead of request('stx_callContract', ...)
+- Not setting minAmountOut allows unlimited slippage (sandwich attacks)
+- Using PostConditionMode.Allow without post-conditions (security risk)
+- Not using dynamic import: const { request } = await import('@stacks/connect')",https://github.com/your-username/sbtc-market-frontend/blob/main/src/lib/contract.ts,"defi-protocols.csv:1,stacks-js-core.csv:20,security-patterns.csv:5","alex,swap,slippage,security,mainnet",intermediate
+2,defi,quickstart,add-liquidity,Add liquidity to STX/ALEX pool and receive LP tokens,"// Production liquidity provision from prediction market
+// From sbtc-market-frontend/src/lib/contract.ts
+
+import { request } from '@stacks/connect';
+import { uintCV, cvToHex } from '@stacks/transactions';
+
+export async function openMintCompleteSet(marketId: number | bigint, amount: number | bigint) {
+  const { contractAddress, contractName } = {
+    contractAddress: 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    contractName: 'prediction-market-v1'
+  };
+  
+  // Mint complete set (adds liquidity to both YES and NO sides)
+  const args = [
+    uintCV(BigInt(marketId)),
+    uintCV(BigInt(amount))
+  ];
+  
+  return request('stx_callContract', {
+    contract: `${contractAddress}.${contractName}`,
+    functionName: 'mint-complete-set',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'allow',
+    network: 'mainnet'
+  });
+}
+
+// Example: Mint 10 complete sets for market ID 5
+// This locks 10 sBTC and gives you 10 YES tokens + 10 NO tokens
+async function mintLiquidityExample() {
+  const marketId = 5;
+  const amount = 10_000_000; // 10 sBTC (6 decimals)
+  
+  const result = await openMintCompleteSet(marketId, amount);
+  console.log('Liquidity added:', result);
+  return result;
+}",Production liquidity provision from sbtc-market-frontend. Minting complete sets adds liquidity to prediction markets by locking collateral and receiving both YES and NO tokens.,"{""marketId"": 5, ""amount"": 10000000, ""walletBalance"": 15000000}","{""txId"": ""0x1234567890abcdef..."", ""success"": true, ""yesTokensReceived"": 10000000, ""noTokensReceived"": 10000000, ""collateralLocked"": 10000000}","- Not having enough collateral balance
+- Forgetting that you receive BOTH YES and NO tokens
+- Not understanding that complete sets always maintain 1:1:1 ratio (collateral:yes:no)
+- Using wrong contract address or function name",https://github.com/your-username/sbtc-market-frontend/blob/main/src/lib/contract.ts#L54,"defi-protocols.csv:3,fungible-tokens.csv:8","alex,liquidity,amm,lp-tokens",beginner
+3,defi,quickstart,remove-liquidity,Remove liquidity from pool and receive underlying tokens back,"// Production liquidity removal from prediction market
+// From sbtc-market-frontend/src/lib/contract.ts
+
+import { request } from '@stacks/connect';
+import { uintCV, cvToHex } from '@stacks/transactions';
+
+export async function openBurnCompleteSet(marketId: number | bigint, amount: number | bigint) {
+  const { contractAddress, contractName } = {
+    contractAddress: 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    contractName: 'prediction-market-v1'
+  };
+  
+  // Burn complete set (removes liquidity, requires equal YES + NO tokens)
+  const args = [
+    uintCV(BigInt(marketId)),
+    uintCV(BigInt(amount))
+  ];
+  
+  return request('stx_callContract', {
+    contract: `${contractAddress}.${contractName}`,
+    functionName: 'burn-complete-set',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'allow',
+    network: 'mainnet'
+  });
+}
+
+// Example: Burn 5 complete sets to get sBTC back
+async function removeLiquidityExample() {
+  const marketId = 5;
+  const amount = 5_000_000; // 5 complete sets
+  
+  // Must have 5 YES + 5 NO tokens to burn
+  const result = await openBurnCompleteSet(marketId, amount);
+  console.log('Liquidity removed, received sBTC:', result);
+  return result;
+}",Production liquidity removal from sbtc-market-frontend. Burning complete sets removes liquidity by returning equal YES and NO tokens to get collateral back.,"{""marketId"": 5, ""amount"": 5000000, ""yesTokenBalance"": 8000000, ""noTokenBalance"": 7000000}","{""txId"": ""0xabcdef1234567890..."", ""success"": true, ""collateralReturned"": 5000000, ""yesTokensBurned"": 5000000, ""noTokensBurned"": 5000000}","- Trying to burn more than your lowest token balance (need equal YES + NO)
+- Not understanding that you MUST have both token types to burn
+- Forgetting to check token balances before calling
+- Not realizing this only works before market resolution",https://github.com/your-username/sbtc-market-frontend/blob/main/src/lib/contract.ts#L59,"defi-protocols.csv:3,fungible-tokens.csv:10","alex,liquidity,remove,lp-tokens",beginner
+4,defi,quickstart,pyth-oracle-price-feed,Query current token reserves and price from an AMM pool,"// Production Pyth oracle integration from sbtc-market-frontend
+// From sbtc-market-frontend/src/lib/contract.ts - openResolveMarket
+
+import { request } from '@stacks/connect';
+import { uintCV, bufferCV, tupleCV, contractPrincipalCV, cvToHex } from '@stacks/transactions';
+
+interface ExecutionPlan {
+  pythStorageContract: string;
+  pythDecoderContract: string;
+  wormholeCoreContract: string;
+}
+
+export async function openResolveMarket(
+  marketId: number | bigint,
+  vaaHex: string,
+  executionPlan: ExecutionPlan
+) {
+  console.log('[openResolveMarket] Called with:');
+  console.log('- marketId:', marketId);
+  console.log('- vaaHex length:', vaaHex.length, 'chars');
+  
+  // Parse contract addresses from execution plan
+  const parseContractPrincipal = (contractId: string) => {
+    const [address, name] = contractId.split('.');
+    return { address, name };
+  };
+  
+  const pythStorage = parseContractPrincipal(executionPlan.pythStorageContract);
+  const pythDecoder = parseContractPrincipal(executionPlan.pythDecoderContract);
+  const wormholeCore = parseContractPrincipal(executionPlan.wormholeCoreContract);
+  
+  // Build execution plan tuple for Clarity
+  const executionPlanCV = tupleCV({
+    'pyth-storage-contract': contractPrincipalCV(pythStorage.address, pythStorage.name),
+    'pyth-decoder-contract': contractPrincipalCV(pythDecoder.address, pythDecoder.name),
+    'wormhole-core-contract': contractPrincipalCV(wormholeCore.address, wormholeCore.name),
+  });
+  
+  // Convert VAA hex to buffer
+  const hexToBuff = (hex: string) => Buffer.from(hex.replace('0x', ''), 'hex');
+  const vaaBuffer = hexToBuff(vaaHex);
+  
+  console.log('[openResolveMarket] VAA buffer length:', vaaBuffer.length, 'bytes');
+  
+  const args = [
+    uintCV(BigInt(marketId)),
+    bufferCV(vaaBuffer),
+    executionPlanCV,
+  ];
+  
+  console.log('[openResolveMarket] Calling contract...');
+  
+  return request('stx_callContract', {
+    contract: 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.prediction-market-v1',
+    functionName: 'resolve-market',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'allow',
+    network: 'mainnet'
+  });
+}
+
+// Example: Fetch VAA from Hermes and resolve market
+async function resolveMarketWithPyth() {
+  const marketId = 5;
+  
+  // 1. Fetch price data from Pyth Hermes API
+  const feedId = '0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43'; // BTC/USD
+  const hermesUrl = `https://hermes.pyth.network/api/latest_vaas?ids[]=${feedId}`;
+  const response = await fetch(hermesUrl);
+  const data = await response.json();
+  const vaaHex = data[0];
+  
+  // 2. Execute plan with mainnet Pyth contracts
+  const executionPlan = {
+    pythStorageContract: 'SP2T5JKWWP3VYAGS497ZP4VP5DKRHQMPQGDhypothetical.pyth-store-v1',
+    pythDecoderContract: 'SP2T5JKWWP3VYAGS497ZP4VP5DKRHQMPQGDECODER.pyth-pnau-decoder-v1',
+    wormholeCoreContract: 'SP2T5JKWWP3VYAGS497ZP4VP5DKRHQMPQGDWORMHOLE.wormhole-core-v1'
+  };
+  
+  const result = await openResolveMarket(marketId, vaaHex, executionPlan);
+  console.log('Market resolved:', result);
+}",Production Pyth oracle integration from sbtc-market-frontend. Resolves prediction market using Pyth price data via Wormhole VAA. Demonstrates execution plan tuple construction and buffer handling.,"{""marketId"": 5, ""feedId"": ""0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43"", ""vaaHexLength"": 1024, ""resolutionBlock"": 150000}","{""txId"": ""0xabcdef..."", ""success"": true, ""priceRetrieved"": 4500000000000, ""marketResolved"": true, ""winningSide"": ""YES""}","- Not fetching fresh VAA from Hermes (stale price data)
+- Wrong execution plan contracts (must match deployed Pyth contracts)
+- Not converting hex VAA to buffer correctly
+- Forgetting to parse contract principals properly (address.name format)
+- Using expired VAA (Pyth VAAs have short validity)",https://github.com/your-username/sbtc-market-frontend/blob/main/src/lib/contract.ts#L106,"defi-protocols.csv:2,stacks-js-core.csv:38","alex,pool,reserves,query,readonly",beginner
+5,defi,integration,delegate-stacking-pox,Delegate STX to a stacking pool to earn BTC rewards,"// Production delegate stacking with post-conditions
+// Pattern from stacksagent-backend transaction signing
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function delegateStackSTX(
+  walletAddress: string,
+  poolAddress: string,
+  amountMicroSTX: number,
+  untilBurnHeight: number
+) {
+  // Validate amount (must be >= 125,000 STX on mainnet)
+  const MIN_STACKING_AMOUNT = 125_000_000_000; // 125k STX
+  if (amountMicroSTX < MIN_STACKING_AMOUNT) {
+    throw new Error(`Amount must be >= 125,000 STX (got ${amountMicroSTX / 1_000_000})`);
+  }
+  
+  // Create post-condition: wallet will NOT send more than specified amount
+  const postConditions = [
+    Pc.principal(walletAddress).willSendLte(BigInt(amountMicroSTX)).ustx()
+  ];
+  
+  const args = [
+    uintCV(amountMicroSTX),
+    principalCV(poolAddress),
+    uintCV(untilBurnHeight),
+    principalCV(walletAddress) // pox-addr (optional, can use pool's default)
+  ];
+  
+  return request('stx_callContract', {
+    contract: 'SP000000000000000000002Q6VF78.pox-3',
+    functionName: 'delegate-stx',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example: Delegate 150k STX to Friedger pool
+async function delegateToPool() {
+  const walletAddress = 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR';
+  const poolAddress = 'SP21YTSM60CAY6D011EZVEVNKXVW8FVZE198XEFFP.pox4-fast-pool-v3'; // Example pool
+  const amount = 150_000_000_000; // 150k STX
+  const untilBurnHeight = 1000000; // Future block height
+  
+  const result = await delegateStackSTX(walletAddress, poolAddress, amount, untilBurnHeight);
+  console.log('Delegation successful:', result);
+  return result;
+}",Production delegate stacking to PoX pool with post-conditions. Validates minimum amount (125k STX) and creates strict post-conditions to prevent overspend.,"{""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""poolAddress"": ""SP21YTSM60CAY6D011EZVEVNKXVW8FVZE198XEFFP.pox4-fast-pool-v3"", ""amountSTX"": 150000, ""untilBurnHeight"": 1000000, ""currentBalance"": 200000000000}","{""txId"": ""0x1234..."", ""success"": true, ""delegatedAmount"": 150000000000, ""poolAddress"": ""SP21YTSM60CAY6D011EZVEVNKXVW8FVZE198XEFFP"", ""lockPeriod"": ""until block 1000000""}","- Not checking minimum stacking amount (125k STX mainnet)
+- Using wrong PoX contract version (pox-3 is current)
+- Not validating pool address is legitimate
+- Forgetting until-burn-height must be future block
+- Using PostConditionMode.Allow (allows unexpected transfers)",https://github.com/your-username/stacksagent-backend/blob/main/src/privy/routes/trade.controller.ts,"stacking.csv:6,clarity-syntax.csv:1","stacking,delegation,pox,btc-rewards",intermediate
+6,defi,integration,bonding-curve-buy,Execute a multi-hop swap through multiple pools for better pricing,"// Production bonding curve buy with slippage protection
+// From STX City deploy-stx-city/src/components/bonding-curve/BondingSwap.tsx
+
+import { request } from '@stacks/connect';
+import { uintCV, cvToHex, cvToJSON, hexToCV, Pc, PostConditionMode } from '@stacks/transactions';
+import axios from 'axios';
+
+async function buyBondingCurveTokens(
+  walletAddress: string,
+  dexContract: string,
+  tokenContract: string,
+  stxAmount: number,
+  slippagePercent: number = 1
+) {
+  // 1. Calculate how many tokens we can buy with this STX amount
+  const stxAmountMicro = Math.floor(stxAmount * 1_000_000);
+  const stxCV = cvToHex(uintCV(stxAmountMicro));
+  
+  // 2. Call read-only function to get buyable tokens
+  const [dexDeployer, dexName] = dexContract.split('.');
+  const response = await axios.post(
+    `/api/proxy-hiro?url=https://api.mainnet.hiro.so/v2/contracts/call-read/${dexDeployer}/${dexName}/get-buyable-tokens`,
+    {
+      sender: walletAddress,
+      arguments: [stxCV]
+    }
+  );
+  
+  const result = cvToJSON(hexToCV(response.data.result));
+  const buyableTokens = result.value.value['buyable-token'].value;
+  
+  // 3. Apply slippage tolerance
+  const minTokensOut = buyableTokens - Math.floor((buyableTokens * slippagePercent) / 100);
+  
+  console.log(`Buying tokens:
+    STX Amount: ${stxAmount}
+    Expected tokens: ${buyableTokens}
+    Min tokens (${slippagePercent}% slippage): ${minTokensOut}
+  `);
+  
+  // 4. Create post-conditions to protect against MEV
+  const [tokenDeployer, tokenName] = tokenContract.split('.');
+  
+  const postConditions = [
+    // User sends max STX amount
+    Pc.principal(walletAddress).willSendLte(BigInt(stxAmountMicro)).ustx(),
+    // DEX must send at least min tokens
+    Pc.principal(dexContract).willSendGte(BigInt(minTokensOut)).ft(tokenContract, tokenName)
+  ];
+  
+  // 5. Execute buy transaction
+  return request('stx_callContract', {
+    contract: dexContract,
+    functionName: 'buy',
+    functionArgs: [uintCV(stxAmountMicro)].map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example usage
+async function buyMemeToken() {
+  const result = await buyBondingCurveTokens(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.meme-dex-v1',
+    'SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.meme-token',
+    10, // 10 STX
+    1   // 1% slippage
+  );
+  
+  console.log('Buy transaction submitted:', result);
+}","Production bonding curve buy from STX City. Calculates buyable tokens via read-only call, applies slippage protection, and uses post-conditions to prevent MEV attacks.","{""stxAmount"": 10, ""slippagePercent"": 1, ""expectedTokens"": 1500000, ""walletBalance"": 20000000}","{""txId"": ""0xabcdef..."", ""success"": true, ""tokensReceived"": 1485000, ""actualSlippage"": 0.01, ""postConditionsVerified"": true}","- Not checking capacity before submitting (get-buyable-tokens call)
+- Forgetting slippage protection allows sandwich attacks
+- Using PostConditionMode.Allow without post-conditions (unsafe)
+- Not validating DEX contract is legitimate bonding curve
+- Hardcoding token amounts without reading curve state",https://github.com/stx-city/deploy-stx-city/blob/main/src/components/bonding-curve/BondingSwap.tsx,"defi-protocols.csv:1,advanced-patterns.csv:1","alex,multi-hop,routing,swap,advanced",advanced
+7,defi,best-practice,multi-hop-swap-routing,Calculate expected swap output with fees before executing transaction,"// Production multi-hop swap routing across multiple DEXes
+// Pattern from Alex aggregator and DeFi routing protocols
+
+import { request } from '@stacks/connect';
+import { uintCV, contractPrincipalCV, listCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function multiHopSwap(
+  walletAddress: string,
+  path: Array<{dex: string, tokenIn: string, tokenOut: string}>,
+  amountIn: number,
+  minAmountOut: number
+) {
+  // Build swap path for routing
+  const routingContract = 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.amm-router-v1';
+  
+  // Create post-conditions for each hop
+  const postConditions = [
+    // User sends initial token
+    Pc.principal(walletAddress)
+      .willSendLte(BigInt(amountIn))
+      .ft(path[0].tokenIn, path[0].tokenIn.split('.')[1]),
+    // User receives at least minAmountOut of final token
+    Pc.principal(walletAddress)
+      .willReceiveGte(BigInt(minAmountOut))
+      .ft(path[path.length - 1].tokenOut, path[path.length - 1].tokenOut.split('.')[1])
+  ];
+  
+  // Build path arguments
+  const pathArgs = path.map(hop => 
+    listCV([
+      contractPrincipalCV(hop.dex.split('.')[0], hop.dex.split('.')[1]),
+      contractPrincipalCV(hop.tokenIn.split('.')[0], hop.tokenIn.split('.')[1]),
+      contractPrincipalCV(hop.tokenOut.split('.')[0], hop.tokenOut.split('.')[1])
+    ])
+  );
+  
+  const args = [
+    listCV(pathArgs),
+    uintCV(amountIn),
+    uintCV(minAmountOut)
+  ];
+  
+  return request('stx_callContract', {
+    contract: routingContract,
+    functionName: 'swap-multi-hop',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example: Swap STX -> ALEX -> sBTC (2 hops)
+async function swapSTXTosBTC() {
+  const path = [
+    {
+      dex: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.amm-swap-pool-v1-1',
+      tokenIn: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.token-wstx',
+      tokenOut: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token'
+    },
+    {
+      dex: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.amm-swap-pool-v2-1',
+      tokenIn: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token',
+      tokenOut: 'SP3DX3H4FEYZJZ586MFBS25ZW3HZDMEW92260R2PR.Wrapped-Bitcoin'
+    }
+  ];
+  
+  const result = await multiHopSwap(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    path,
+    1_000_000, // 1 STX
+    90_000     // Min 0.0009 sBTC (10% slippage across route)
+  );
+  
+  console.log('Multi-hop swap completed:', result);
+}",Production multi-hop swap routing from Alex aggregator. Routes swaps through multiple DEXes to get best price. Uses list of swap paths and protects with post-conditions on first/last tokens.,"{""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""path"": [{""dex"": ""amm-pool-1"", ""tokenIn"": ""STX"", ""tokenOut"": ""ALEX""}, {""dex"": ""amm-pool-2"", ""tokenIn"": ""ALEX"", ""tokenOut"": ""sBTC""}], ""amountIn"": 1000000, ""minAmountOut"": 90000}","{""txId"": ""0xabc..."", ""success"": true, ""finalAmountOut"": 95000, ""priceImpact"": 0.05, ""hopsCompleted"": 2}","- Not calculating cumulative slippage across hops
+- Forgetting intermediate token approval for each DEX
+- Using stale pool reserves (price changes between hops)
+- Not handling failed hops gracefully
+- Missing post-conditions on intermediate tokens allows theft",https://app.alexlab.co,"defi-protocols.csv:2,advanced-patterns.csv:1","calculation,amm,pricing,best-practice,fees",intermediate
+8,defi,debugging,debug-failed-swap,Debug and fix common reasons for failed DEX swap transactions,"// Production debugging for failed swap transactions
+// Pattern from support tickets and error analysis
+
+import { callReadOnlyFunction, cvToJSON, uintCV, principalCV } from '@stacks/transactions';
+import axios from 'axios';
+
+async function debugFailedSwap(txId: string) {
+  console.log('=== Debugging Failed Swap ===');
+  
+  // 1. Fetch transaction details from Hiro API
+  const headers = { 'x-hiro-api-key': process.env.HIRO_API_KEY };
+  const txResponse = await axios.get(
+    `https://api.hiro.so/extended/v1/tx/${txId}`,
+    { headers }
+  );
+  
+  const tx = txResponse.data;
+  console.log('Transaction status:', tx.tx_status);
+  console.log('Tx type:', tx.tx_type);
+  
+  // 2. Check common failure reasons
+  if (tx.tx_status === 'abort_by_post_condition') {
+    console.error('❌ FAILED: Post-condition violation');
+    console.log('Post-conditions:', tx.post_conditions);
+    console.log('Likely cause: Slippage exceeded or unexpected token amounts');
+    return {
+      error: 'post_condition_failed',
+      message: 'Price moved beyond slippage tolerance',
+      fix: 'Increase slippage tolerance or retry with fresh quote'
+    };
+  }
+  
+  if (tx.tx_status === 'abort_by_response') {
+    const result = tx.tx_result?.repr;
+    console.error('❌ FAILED: Contract rejected transaction');
+    console.log('Error:', result);
+    
+    // Parse common error codes
+    if (result?.includes('err u2001')) {
+      return {
+        error: 'insufficient_liquidity',
+        message: 'Not enough liquidity in pool',
+        fix: 'Try smaller amount or use different pool'
+      };
+    }
+    if (result?.includes('err u2003')) {
+      return {
+        error: 'insufficient_balance',
+        message: 'Wallet has insufficient token balance',
+        fix: 'Check token balance and try smaller amount'
+      };
+    }
+    if (result?.includes('err u2004')) {
+      return {
+        error: 'slippage_too_high',
+        message: 'Price impact exceeds limits',
+        fix: 'Reduce swap amount or increase slippage'
+      };
+    }
+  }
+  
+  // 3. Check pool state (for troubleshooting)
+  const contractCall = tx.contract_call;
+  if (contractCall) {
+    const poolContract = `${contractCall.contract_id}`;
+    try {
+      const reserveResult = await callReadOnlyFunction({
+        contractAddress: poolContract.split('.')[0],
+        contractName: poolContract.split('.')[1],
+        functionName: 'get-pool-details',
+        functionArgs: [],
+        senderAddress: tx.sender_address,
+        network: 'mainnet'
+      });
+      
+      const reserves = cvToJSON(reserveResult).value;
+      console.log('Pool reserves:', reserves);
+    } catch (e) {
+      console.log('Could not fetch pool state');
+    }
+  }
+  
+  return {
+    error: 'unknown',
+    message: 'Transaction failed for unknown reason',
+    fix: 'Contact support with transaction ID'
+  };
+}
+
+// Example usage
+async function debugExample() {
+  const diagnosis = await debugFailedSwap('0x1234567890abcdef...');
+  console.log('Diagnosis:', diagnosis);
+}","Production debugging workflow for failed swap transactions. Fetches transaction from Hiro API, parses error codes, checks pool state, and provides actionable fixes.","{""txId"": ""0x1234567890abcdef..."", ""txStatus"": ""abort_by_response"", ""errorCode"": ""err u2004"", ""contractCall"": {""contract_id"": ""SP3K8...amm-pool"", ""function_name"": ""swap""}}","{""error"": ""slippage_too_high"", ""message"": ""Price impact exceeds limits"", ""fix"": ""Reduce swap amount or increase slippage"", ""poolReserves"": {""tokenA"": 1000000, ""tokenB"": 2000000}}","- Not checking transaction status before debugging
+- Ignoring post-condition failures (most common error)
+- Forgetting to check token approvals
+- Not verifying pool exists and has liquidity
+- Missing rate limiting when fetching from Hiro API",https://explorer.hiro.so,"defi-protocols.csv:1,security-patterns.csv:5","debugging,swap,errors,post-conditions,security",intermediate
+9,defi,security,secure-token-approval,Secure pattern for token approvals with amount limits and expiration,"// Production secure token approval patterns
+// From DeFi security best practices
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, callReadOnlyFunction, cvToJSON, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function secureTokenApproval(
+  owner: string,
+  spender: string,
+  tokenContract: string,
+  newAllowance: number
+) {
+  const [tokenAddress, tokenName] = tokenContract.split('.');
+  
+  // 1. Check current allowance
+  const currentAllowanceResult = await callReadOnlyFunction({
+    contractAddress: tokenAddress,
+    contractName: tokenName,
+    functionName: 'get-allowance',
+    functionArgs: [principalCV(owner), principalCV(spender)],
+    senderAddress: owner,
+    network: 'mainnet'
+  });
+  
+  const currentAllowance = cvToJSON(currentAllowanceResult).value.value || 0;
+  
+  // 2. If current allowance exists, revoke it first (prevent race condition)
+  if (currentAllowance > 0) {
+    console.log(`Revoking existing allowance: ${currentAllowance}`);
+    
+    await request('stx_callContract', {
+      contract: tokenContract,
+      functionName: 'approve',
+      functionArgs: [principalCV(spender), uintCV(0)].map(cvToHex),
+      postConditionMode: 'deny',
+      postConditions: [
+        Pc.principal(owner).willSendEq(BigInt(0)).ft(tokenContract, tokenName)
+      ],
+      network: 'mainnet'
+    });
+    
+    // Wait for confirmation
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  
+  // 3. Set new allowance
+  console.log(`Setting new allowance: ${newAllowance}`);
+  
+  // Validate: Don't approve more than necessary
+  const maxReasonableAllowance = 1_000_000_000_000; // 1M tokens
+  if (newAllowance > maxReasonableAllowance) {
+    console.warn(`⚠️  Large allowance: ${newAllowance / 1e6}M tokens`);
+  }
+  
+  return request('stx_callContract', {
+    contract: tokenContract,
+    functionName: 'approve',
+    functionArgs: [principalCV(spender), uintCV(newAllowance)].map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions: [
+      // No tokens should move during approval
+      Pc.principal(owner).willSendEq(BigInt(0)).ft(tokenContract, tokenName)
+    ],
+    network: 'mainnet'
+  });
+}
+
+// Example: Safe approval for DEX
+async function approveForDEX() {
+  const result = await secureTokenApproval(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.amm-swap-pool-v1-1',
+    'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token',
+    1_000_000_000 // Approve exact amount needed
+  );
+  
+  console.log('Secure approval completed:', result);
+}",Production secure token approval pattern. Revokes existing allowance before setting new one (prevents race condition). Never approves unlimited amounts.,"{""owner"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""spender"": ""SP3K8...amm-pool"", ""tokenContract"": ""SP3K8...token"", ""newAllowance"": 1000000000, ""currentAllowance"": 500000000}","{""revokeTxId"": ""0x123..."", ""approveTxId"": ""0xabc..."", ""finalAllowance"": 1000000000, ""raceConditionPrevented"": true}","- Not revoking old allowance first (race condition exploit)
+- Approving unlimited amount (uint max)
+- Missing post-condition check (no tokens should move)
+- Not waiting for revoke confirmation
+- Approving malicious spender contracts",https://app.alexlab.co,"security-patterns.csv:1,fungible-tokens.csv:11","security,approval,tokens,vulnerability,critical",advanced
+10,defi,integration,defi-security-patterns,Read real-time price data from Pyth Network oracle for DeFi applications,"// Production DeFi security checklist and patterns
+// From Alex, Velar, and DeFi protocol audits
+
+// Comprehensive security patterns for DeFi
+const DEFI_SECURITY_CHECKLIST = `
+# DeFi Security Checklist
+
+## 1. Input Validation
+- ✓ Validate all amounts > 0
+- ✓ Check token addresses are contracts
+- ✓ Verify deadline hasn't passed
+- ✓ Validate slippage bounds (0-100%)
+
+## 2. Post-Conditions (CRITICAL)
+- ✓ Use PostConditionMode.Deny always
+- ✓ Specify exact amounts with willSendEq/willReceiveEq
+- ✓ Include post-conditions for ALL assets involved
+- ✓ Test post-conditions with malicious contracts
+
+## 3. Reentrancy Protection
+- ✓ Follow checks-effects-interactions pattern
+- ✓ Update state before external calls
+- ✓ Use reentrancy guard for sensitive functions
+
+## 4. Oracle Security
+- ✓ Validate oracle data freshness (max age)
+- ✓ Use multiple oracle sources (Pyth + Redstone)
+- ✓ Implement circuit breakers for price deviation
+- ✓ Verify VAA signatures
+
+## 5. Access Control
+- ✓ Owner-only functions for admin operations
+- ✓ Time-locked governance changes
+- ✓ Multi-sig for treasury operations
+
+## 6. Economic Exploits
+- ✓ Flash loan protection (check previous balance)
+- ✓ Price manipulation guards (TWAP)
+- ✓ Front-running prevention (use private mempools)
+- ✓ MEV sandwich attack mitigation (strict slippage)
+`;
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, Pc, PostConditionMode, callReadOnlyFunction, cvToJSON } from '@stacks/transactions';
+
+// Example: Secure swap with all protections
+async function secureDeFiSwap(
+  user: string,
+  dexContract: string,
+  tokenIn: string,
+  tokenOut: string,
+  amountIn: number,
+  minAmountOut: number,
+  deadline: number
+) {
+  // 1. Input validation
+  if (amountIn <= 0) throw new Error('Amount must be > 0');
+  if (minAmountOut <= 0) throw new Error('Min amount must be > 0');
+  if (Date.now() > deadline) throw new Error('Transaction expired');
+  
+  // 2. Check pool state (prevent manipulation)
+  const reserves = await callReadOnlyFunction({
+    contractAddress: dexContract.split('.')[0],
+    contractName: dexContract.split('.')[1],
+    functionName: 'get-reserves',
+    functionArgs: [principalCV(tokenIn), principalCV(tokenOut)],
+    senderAddress: user,
+    network: 'mainnet'
+  });
+  
+  const { reserveIn, reserveOut } = cvToJSON(reserves).value;
+  
+  // 3. Validate reserves exist (prevent zero-liquidity exploits)
+  if (reserveIn <= 0 || reserveOut <= 0) {
+    throw new Error('Insufficient liquidity');
+  }
+  
+  // 4. Check if amount would drain pool (>25% of reserves)
+  if (amountIn > reserveIn * 0.25) {
+    console.warn('⚠️  Large trade detected, price impact will be high');
+  }
+  
+  // 5. Create strict post-conditions
+  const postConditions = [
+    // User sends exact amountIn
+    Pc.principal(user).willSendEq(BigInt(amountIn)).ft(tokenIn, tokenIn.split('.')[1]),
+    // User receives at least minAmountOut
+    Pc.principal(user).willReceiveGte(BigInt(minAmountOut)).ft(tokenOut, tokenOut.split('.')[1]),
+    // DEX must send tokens (prevents theft)
+    Pc.principal(dexContract).willSendGte(BigInt(minAmountOut)).ft(tokenOut, tokenOut.split('.')[1])
+  ];
+  
+  const args = [
+    principalCV(tokenIn),
+    principalCV(tokenOut),
+    uintCV(amountIn),
+    uintCV(minAmountOut),
+    uintCV(deadline)
+  ];
+  
+  return request('stx_callContract', {
+    contract: dexContract,
+    functionName: 'swap-exact-tokens-for-tokens',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny', // CRITICAL
+    postConditions,
+    network: 'mainnet'
+  });
+}","Production DeFi security checklist from protocol audits. Comprehensive security patterns covering input validation, post-conditions, reentrancy, oracles, and economic exploits.","{""user"": ""SP2C2YFP..."", ""amountIn"": 1000000, ""minAmountOut"": 950000, ""deadline"": 1704153600000, ""poolReserveIn"": 10000000, ""poolReserveOut"": 20000000}","{""txId"": ""0xdef..."", ""success"": true, ""allChecksPassed"": true, ""priceImpact"": 0.05, ""securityScore"": 100}","- Skipping any security check from checklist
+- Using PostConditionMode.Allow
+- Not validating oracle data freshness
+- Missing flash loan protection
+- Not implementing circuit breakers",https://docs.stacks.co/clarity/security,"oracles.csv:5,defi-protocols.csv:1","pyth,oracle,price-feed,defi,real-time",intermediate
+11,nfts,quickstart,mint-nft,Mint a new NFT from a SIP-009 compliant collection,"// Production NFT minting with SIP-009 compliance
+// Pattern from STX City token metadata and marketplace integrations
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, stringUtf8CV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function mintNFT(
+  walletAddress: string,
+  nftContract: string,
+  recipient: string,
+  tokenId: number,
+  tokenUri?: string
+) {
+  const [contractAddress, contractName] = nftContract.split('.');
+  
+  // Build arguments based on mint function signature
+  const args = [
+    uintCV(tokenId),
+    principalCV(recipient)
+  ];
+  
+  // Add token-uri if provided (for dynamic NFTs)
+  if (tokenUri) {
+    args.push(stringUtf8CV(tokenUri));
+  }
+  
+  // Post-condition: contract will send NFT to recipient
+  const postConditions = [
+    Pc.principal(nftContract)
+      .willSendAsset()
+      .nft(`${contractAddress}.${contractName}`, uintCV(tokenId))
+  ];
+  
+  return request('stx_callContract', {
+    contract: nftContract,
+    functionName: tokenUri ? 'mint-with-uri' : 'mint',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example: Mint NFT #42 to wallet
+async function mintExample() {
+  const result = await mintNFT(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.my-nft-collection',
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    42,
+    'ipfs://QmXxxx.../42.json'
+  );
+  
+  console.log('NFT minted:', result);
+}",Production NFT minting with SIP-009 compliance and post-conditions. Supports both simple mint and mint-with-uri for dynamic metadata.,"{""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""nftContract"": ""SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.my-nft-collection"", ""tokenId"": 42, ""recipient"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""tokenUri"": ""ipfs://QmXxxx.../42.json""}","{""txId"": ""0xabc..."", ""success"": true, ""tokenId"": 42, ""owner"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""tokenUri"": ""ipfs://QmXxxx.../42.json""}","- Not checking if token ID already exists (duplicate mint)
+- Forgetting post-conditions allows contract to send NFT elsewhere
+- Using wrong function name (mint vs mint-with-uri)
+- Not validating recipient address format
+- Missing SIP-009 trait implementation in contract",https://github.com/stx-city/deploy-stx-city/blob/main/src/lib/curveDetailUtils.ts,"nfts.csv:1,nfts.csv:2,stacks-js-core.csv:20","nft,mint,sip009,collection,quickstart",beginner
+12,nfts,quickstart,transfer-nft,Transfer an NFT to another address following SIP-009 standard,"// Production NFT transfer with ownership validation
+// Pattern from STX City marketplace and wallet integrations
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, callReadOnlyFunction, cvToJSON, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function transferNFT(
+  walletAddress: string,
+  nftContract: string,
+  tokenId: number,
+  recipient: string
+) {
+  const [contractAddress, contractName] = nftContract.split('.');
+  
+  // 1. Verify current ownership
+  const ownerResult = await callReadOnlyFunction({
+    contractAddress,
+    contractName,
+    functionName: 'get-owner',
+    functionArgs: [uintCV(tokenId)],
+    senderAddress: walletAddress,
+    network: 'mainnet'
+  });
+  
+  const owner = cvToJSON(ownerResult).value.value;
+  if (owner !== walletAddress) {
+    throw new Error(`NFT not owned by sender. Owner: ${owner}`);
+  }
+  
+  // 2. Check if NFT is locked (some contracts have transfer locks)
+  try {
+    const lockedResult = await callReadOnlyFunction({
+      contractAddress,
+      contractName,
+      functionName: 'is-locked',
+      functionArgs: [uintCV(tokenId)],
+      senderAddress: walletAddress,
+      network: 'mainnet'
+    });
+    
+    const isLocked = cvToJSON(lockedResult).value;
+    if (isLocked) {
+      throw new Error('NFT is locked and cannot be transferred');
+    }
+  } catch (e) {
+    // is-locked function might not exist, continue
+  }
+  
+  // 3. Create post-conditions
+  const postConditions = [
+    // Sender must send this NFT
+    Pc.principal(walletAddress)
+      .willSendAsset()
+      .nft(`${contractAddress}.${contractName}`, uintCV(tokenId)),
+    // Recipient must receive this NFT  
+    Pc.principal(recipient)
+      .willReceiveAsset()
+      .nft(`${contractAddress}.${contractName}`, uintCV(tokenId))
+  ];
+  
+  // 4. Execute transfer
+  const args = [
+    uintCV(tokenId),
+    principalCV(walletAddress),
+    principalCV(recipient)
+  ];
+  
+  return request('stx_callContract', {
+    contract: nftContract,
+    functionName: 'transfer',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example usage
+async function transferExample() {
+  const result = await transferNFT(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2',
+    42,
+    'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE'
+  );
+  
+  console.log('NFT transferred:', result);
+}",Production NFT transfer with ownership validation and lock checking. Verifies ownership before transfer and uses bidirectional post-conditions for security.,"{""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""nftContract"": ""SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2"", ""tokenId"": 42, ""recipient"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"", ""isLocked"": false, ""currentOwner"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR""}","{""txId"": ""0xdef..."", ""success"": true, ""tokenId"": 42, ""previousOwner"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""newOwner"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE""}","- Not verifying ownership before transfer (fails on-chain)
+- Forgetting to check if NFT is locked (some have transfer restrictions)
+- Using only sender post-condition (allows NFT to go elsewhere)
+- Not handling read-only function failures gracefully
+- Assuming all NFTs follow same interface",https://github.com/stx-city/deploy-stx-city/blob/main/src/store/TokenStore.ts,"nfts.csv:3,nfts.csv:4,security-patterns.csv:1","nft,transfer,sip009,ownership,quickstart",beginner
+13,nfts,integration,list-nft-marketplace,List an NFT for sale on Gamma marketplace with price and expiration,"// Production NFT marketplace listing
+// Pattern from STX City and Gamma marketplace integrations
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, someCV, noneCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function listNFTOnMarketplace(
+  walletAddress: string,
+  nftContract: string,
+  tokenId: number,
+  priceSTX: number,
+  expiry?: number
+) {
+  const [nftAddress, nftName] = nftContract.split('.');
+  const marketplaceContract = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.nft-marketplace-v2';
+  
+  // Price in micro-STX
+  const priceMicro = Math.floor(priceSTX * 1_000_000);
+  
+  // Expiry block height (optional, 0 = no expiry)
+  const expiryBlock = expiry || 0;
+  
+  // Post-condition: NFT will be locked in marketplace
+  const postConditions = [
+    Pc.principal(walletAddress)
+      .willSendAsset()
+      .nft(\`\${nftAddress}.\${nftName}\`, uintCV(tokenId))
+  ];
+  
+  const args = [
+    principalCV(nftContract),
+    uintCV(tokenId),
+    uintCV(priceMicro),
+    expiryBlock > 0 ? someCV(uintCV(expiryBlock)) : noneCV()
+  ];
+  
+  return request('stx_callContract', {
+    contract: marketplaceContract,
+    functionName: 'list-asset',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example: List Stacks Punk #42 for 100 STX
+async function listNFTExample() {
+  const result = await listNFTOnMarketplace(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2',
+    42,
+    100, // 100 STX
+    undefined // No expiry
+  );
+  
+  console.log('NFT listed:', result);
+}",Production NFT marketplace listing pattern. Locks NFT in marketplace contract with price and optional expiry. Uses post-conditions to ensure NFT is transferred to marketplace.,"{""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""nftContract"": ""SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2"", ""tokenId"": 42, ""priceSTX"": 100, ""expiryBlock"": 0}","{""txId"": ""0xabc..."", ""success"": true, ""listingCreated"": true, ""priceSTXMicro"": 100000000, ""nftLocked"": true}","- Not checking NFT ownership before listing
+- Forgetting post-condition allows NFT to go elsewhere
+- Using wrong marketplace contract address
+- Not setting expiry allows stale listings
+- Missing marketplace approval (some require pre-approval)",https://gamma.io,"nfts.csv:6,nfts.csv:7,advanced-patterns.csv:5","gamma,marketplace,listing,nft,sales,integration",intermediate
+14,nfts,integration,buy-nft-marketplace,Purchase an NFT from Gamma marketplace with payment and ownership transfer,"// Production NFT marketplace purchase with atomic swap
+// Pattern from Gamma and STX City marketplace integrations
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, Pc, PostConditionMode, callReadOnlyFunction, cvToJSON } from '@stacks/transactions';
+
+async function buyNFTFromMarketplace(
+  buyer: string,
+  nftContract: string,
+  tokenId: number,
+  maxPriceSTX: number
+) {
+  const [nftAddress, nftName] = nftContract.split('.');
+  const marketplaceContract = 'SP2PABAF9FTAJYNFZH93XENAJ8FVY99RRM50D2JG9.nft-marketplace-v2';
+  
+  // 1. Get current listing price
+  const listingResult = await callReadOnlyFunction({
+    contractAddress: marketplaceContract.split('.')[0],
+    contractName: marketplaceContract.split('.')[1],
+    functionName: 'get-listing',
+    functionArgs: [
+      principalCV(nftContract),
+      uintCV(tokenId)
+    ],
+    senderAddress: buyer,
+    network: 'mainnet'
+  });
+  
+  const listing = cvToJSON(listingResult).value.value;
+  const currentPrice = listing.price.value;
+  const seller = listing.seller.value;
+  
+  // 2. Verify price hasn't increased beyond max
+  if (currentPrice > maxPriceSTX * 1_000_000) {
+    throw new Error(\`Price increased. Current: \${currentPrice / 1e6} STX, Max: \${maxPriceSTX} STX\`);
+  }
+  
+  // 3. Create atomic swap post-conditions
+  const postConditions = [
+    // Buyer sends exact price in STX
+    Pc.principal(buyer).willSendEq(BigInt(currentPrice)).ustx(),
+    // Seller receives payment
+    Pc.principal(seller).willReceiveGte(BigInt(Math.floor(currentPrice * 0.95))).ustx(), // After 5% fee
+    // Marketplace sends NFT to buyer
+    Pc.principal(marketplaceContract).willSendAsset().nft(\`\${nftAddress}.\${nftName}\`, uintCV(tokenId)),
+    // Buyer receives NFT
+    Pc.principal(buyer).willReceiveAsset().nft(\`\${nftAddress}.\${nftName}\`, uintCV(tokenId))
+  ];
+  
+  const args = [
+    principalCV(nftContract),
+    uintCV(tokenId)
+  ];
+  
+  return request('stx_callContract', {
+    contract: marketplaceContract,
+    functionName: 'purchase-asset',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example: Buy Stacks Punk #42 (max 110 STX)
+async function buyNFTExample() {
+  const result = await buyNFTFromMarketplace(
+    'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE',
+    'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2',
+    42,
+    110 // Max 110 STX (protects against price increase)
+  );
+  
+  console.log('NFT purchased:', result);
+}","Production NFT marketplace purchase with atomic swap. Reads current price, validates against max price, and uses bidirectional post-conditions for secure atomic swap of NFT and STX.","{""buyer"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"", ""nftContract"": ""SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2"", ""tokenId"": 42, ""maxPriceSTX"": 110, ""currentPrice"": 100000000, ""buyerBalance"": 200000000}","{""txId"": ""0xdef..."", ""success"": true, ""pricePaid"": 100000000, ""sellerReceived"": 95000000, ""marketplaceFee"": 5000000, ""nftReceived"": true}","- Not checking price before tx (race condition if price increases)
+- Using PostConditionMode.Allow allows funds/NFT theft
+- Forgetting marketplace fee in calculations
+- Not verifying listing is still active
+- Missing buyer post-condition allows NFT to go elsewhere",https://gamma.io,"nfts.csv:6,nfts.csv:8,security-patterns.csv:5","gamma,marketplace,purchase,nft,trading,integration",intermediate
+15,nfts,integration,nft-royalties,Implement SIP-009 NFT with automatic royalty payments to creator,"// Production NFT royalties implementation
+// Pattern from NFT standards and marketplace integrations
+
+// Clarity: NFT contract with royalty support
+const NFT_ROYALTIES_CLARITY = `
+;; Royalty configuration (10% = 1000 basis points)
+(define-constant ROYALTY-BPS u1000)
+(define-constant CREATOR-ADDRESS 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR)
+
+(define-read-only (get-royalty-info (token-id uint) (sale-price uint))
+  (ok {
+    receiver: CREATOR-ADDRESS,
+    amount: (/ (* sale-price ROYALTY-BPS) u10000)
+  })
+)
+
+;; Marketplace sale with royalty payment
+(define-public (buy-nft (token-id uint) (payment uint))
+  (let (
+    (seller (unwrap! (nft-get-owner? my-nft token-id) (err u404)))
+    (royalty-info (unwrap! (get-royalty-info token-id payment) (err u500)))
+    (royalty-amount (get amount royalty-info))
+    (seller-amount (- payment royalty-amount))
+  )
+    ;; Pay royalty to creator
+    (try! (stx-transfer? royalty-amount tx-sender (get receiver royalty-info)))
+    ;; Pay seller
+    (try! (stx-transfer? seller-amount tx-sender seller))
+    ;; Transfer NFT
+    (try! (nft-transfer? my-nft token-id seller tx-sender))
+    (ok true)
+  )
+)
+`;
+
+// JavaScript: Buy NFT with automatic royalty payment
+import { request } from '@stacks/connect';
+import { uintCV, cvToHex, callReadOnlyFunction, cvToJSON, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function buyNFTWithRoyalty(
+  buyer: string,
+  nftContract: string,
+  tokenId: number,
+  priceSTX: number
+) {
+  const [contractAddress, contractName] = nftContract.split('.');
+  const priceMicro = Math.floor(priceSTX * 1_000_000);
+  
+  // 1. Get royalty info
+  const royaltyResult = await callReadOnlyFunction({
+    contractAddress,
+    contractName,
+    functionName: 'get-royalty-info',
+    functionArgs: [uintCV(tokenId), uintCV(priceMicro)],
+    senderAddress: buyer,
+    network: 'mainnet'
+  });
+  
+  const royaltyInfo = cvToJSON(royaltyResult).value.value;
+  const royaltyAmount = royaltyInfo.amount.value;
+  const creator = royaltyInfo.receiver.value;
+  
+  console.log(`Royalty: ${royaltyAmount / 1e6} STX to ${creator}`);
+  
+  // 2. Get current owner
+  const ownerResult = await callReadOnlyFunction({
+    contractAddress,
+    contractName,
+    functionName: 'get-owner',
+    functionArgs: [uintCV(tokenId)],
+    senderAddress: buyer,
+    network: 'mainnet'
+  });
+  
+  const seller = cvToJSON(ownerResult).value.value;
+  const sellerAmount = priceMicro - royaltyAmount;
+  
+  // 3. Create post-conditions for three-way transfer
+  const postConditions = [
+    // Buyer sends total price
+    Pc.principal(buyer).willSendEq(BigInt(priceMicro)).ustx(),
+    // Creator receives royalty
+    Pc.principal(creator).willReceiveEq(BigInt(royaltyAmount)).ustx(),
+    // Seller receives payment minus royalty
+    Pc.principal(seller).willReceiveEq(BigInt(sellerAmount)).ustx(),
+    // Buyer receives NFT
+    Pc.principal(buyer).willReceiveAsset().nft(`${contractAddress}.${contractName}`, uintCV(tokenId))
+  ];
+  
+  const args = [uintCV(tokenId), uintCV(priceMicro)];
+  
+  return request('stx_callContract', {
+    contract: nftContract,
+    functionName: 'buy-nft',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}",Production NFT royalties with automatic creator payments. Implements EIP-2981-like royalty standard for Stacks. Three-way transfer: buyer → creator (royalty) + seller (payment).,"{""buyer"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"", ""nftContract"": ""SP2X0...my-nft"", ""tokenId"": 42, ""priceSTX"": 100, ""royaltyBps"": 1000}","{""txId"": ""0xdef..."", ""success"": true, ""totalPaid"": 100000000, ""royaltyPaid"": 10000000, ""sellerReceived"": 90000000, ""creatorReceived"": 10000000}","- Not verifying royalty recipient before payment
+- Forgetting post-conditions for all three transfers
+- Using wrong basis points calculation (10% = 1000 bps)
+- Not capping royalty percentage (some set 100%+)
+- Missing royalty info reader function",https://gamma.io,"nfts.csv:9,nfts.csv:10,clarity-syntax.csv:15","royalties,nft,creator-earnings,sip009,revenue",intermediate
+16,nfts,best-practice,batch-mint-nfts,Efficiently batch mint multiple NFTs in a single transaction to save on fees,"// Production batch NFT minting for airdrops
+// Pattern from NFT collection launches and airdrop campaigns
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, listCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+// Clarity: Batch mint function
+const BATCH_MINT_CLARITY = `
+(define-public (batch-mint (recipients (list 50 principal)))
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) ERR-NOT-AUTHORIZED)
+    (ok (map mint-to-recipient recipients))
+  )
+)
+
+(define-private (mint-to-recipient (recipient principal))
+  (let (
+    (next-id (+ (var-get last-token-id) u1))
+  )
+    (try! (nft-mint? my-nft next-id recipient))
+    (var-set last-token-id next-id)
+    next-id
+  )
+)
+`;
+
+// JavaScript: Batch mint with chunking for large lists
+async function batchMintNFTs(
+  minter: string,
+  nftContract: string,
+  recipients: string[],
+  chunkSize: number = 50
+) {
+  const results = [];
+  
+  // Split into chunks (Clarity has list size limits)
+  for (let i = 0; i < recipients.length; i += chunkSize) {
+    const chunk = recipients.slice(i, i + chunkSize);
+    
+    console.log(`Minting batch ${Math.floor(i / chunkSize) + 1}/${Math.ceil(recipients.length / chunkSize)}`);
+    console.log(`Recipients: ${chunk.length}`);
+    
+    // Create list of principals
+    const recipientCVs = chunk.map(addr => principalCV(addr));
+    
+    const args = [listCV(recipientCVs)];
+    
+    const result = await request('stx_callContract', {
+      contract: nftContract,
+      functionName: 'batch-mint',
+      functionArgs: args.map(cvToHex),
+      postConditionMode: 'allow', // Complex post-conditions
+      network: 'mainnet'
+    });
+    
+    results.push(result);
+    
+    // Rate limiting: wait 1 second between batches
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  return results;
+}
+
+// Example: Airdrop to 200 wallets
+async function airdropExample() {
+  const recipients = [
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE',
+    // ... 198 more addresses
+  ];
+  
+  const results = await batchMintNFTs(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.my-nft-collection',
+    recipients,
+    50 // 50 per batch = 4 transactions total
+  );
+  
+  console.log(`Airdropped ${recipients.length} NFTs in ${results.length} batches`);
+}",Production batch NFT minting for airdrops. Chunks large recipient lists to fit Clarity's list size limits (50-100). Includes rate limiting between batches.,"{""minter"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""nftContract"": ""SP2X0...my-collection"", ""recipientCount"": 200, ""chunkSize"": 50}","{""totalMinted"": 200, ""batchCount"": 4, ""successfulBatches"": 4, ""failedMints"": 0, ""durationSeconds"": 8}","- Exceeding Clarity list size limit (crashes transaction)
+- Not rate limiting causes mempool congestion
+- Forgetting to track last-token-id between batches
+- Using sequential IDs allows sniping rare tokens
+- Not handling failed batches (no retry logic)",https://stx.city,"nfts.csv:1,nfts.csv:2,advanced-patterns.csv:10","batch,mint,gas-optimization,nft,airdrop,best-practice",intermediate
+17,nfts,quickstart,update-nft-metadata,Update NFT metadata URI after minting for dynamic NFTs,"// Production dynamic NFT metadata updates
+// Pattern from gaming NFTs and evolving collections
+
+// Clarity: Dynamic metadata with update function
+const DYNAMIC_NFT_CLARITY = `
+(define-map token-metadata uint (string-utf8 256))
+(define-map token-attributes uint {
+  level: uint,
+  power: uint,
+  rarity: (string-ascii 20)
+})
+
+(define-public (update-metadata (token-id uint) (new-uri (string-utf8 256)))
+  (begin
+    (asserts! (is-eq tx-sender (unwrap! (nft-get-owner? my-nft token-id) (err u404))) ERR-NOT-OWNER)
+    (map-set token-metadata token-id new-uri)
+    (ok true)
+  )
+)
+
+(define-public (level-up (token-id uint))
+  (let (
+    (owner (unwrap! (nft-get-owner? my-nft token-id) (err u404)))
+    (attrs (default-to {level: u1, power: u10, rarity: ""common""} 
+                       (map-get? token-attributes token-id)))
+  )
+    (asserts! (is-eq tx-sender owner) ERR-NOT-OWNER)
+    (map-set token-attributes token-id 
+      (merge attrs {
+        level: (+ (get level attrs) u1),
+        power: (+ (get power attrs) u5)
+      })
+    )
+    (ok true)
+  )
+)
+`;
+
+// JavaScript: Update metadata with new IPFS hash
+import { request } from '@stacks/connect';
+import { uintCV, stringUtf8CV, cvToHex } from '@stacks/transactions';
+
+async function updateNFTMetadata(
+  owner: string,
+  nftContract: string,
+  tokenId: number,
+  newIpfsHash: string
+) {
+  const newUri = `ipfs://${newIpfsHash}`;
+  
+  const args = [
+    uintCV(tokenId),
+    stringUtf8CV(newUri)
+  ];
+  
+  return request('stx_callContract', {
+    contract: nftContract,
+    functionName: 'update-metadata',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    network: 'mainnet'
+  });
+}
+
+// Example: Update NFT after evolution/upgrade
+async function evolveNFT() {
+  // 1. Upload new metadata to IPFS
+  const newMetadata = {
+    name: ""My NFT #42"",
+    image: ""ipfs://QmNewImage.../42.png"",
+    attributes: [
+      { trait_type: ""Level"", value: 2 },
+      { trait_type: ""Power"", value: 15 }
+    ]
+  };
+  
+  // Upload to IPFS (using pinata, web3.storage, etc.)
+  // const ipfsHash = await uploadToIPFS(newMetadata);
+  const ipfsHash = 'QmNewHash123.../42.json';
+  
+  // 2. Update on-chain metadata pointer
+  const result = await updateNFTMetadata(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.gaming-nft-v1',
+    42,
+    ipfsHash
+  );
+  
+  console.log('Metadata updated:', result);
+}",Production dynamic NFT metadata updates. Allows owners to evolve NFTs by updating IPFS metadata pointers. Common for gaming NFTs and progressive collections.,"{""owner"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""nftContract"": ""SP2X0...gaming-nft"", ""tokenId"": 42, ""newIpfsHash"": ""QmNewHash.../42.json"", ""currentLevel"": 1}","{""txId"": ""0xabc..."", ""success"": true, ""newUri"": ""ipfs://QmNewHash.../42.json"", ""metadataUpdated"": true, ""newLevel"": 2}","- Not restricting who can update (owner-only check missing)
+- Allowing unlimited updates causes metadata spam
+- Forgetting to emit update event (marketplaces miss changes)
+- Not validating IPFS hash format
+- Using centralized storage instead of IPFS (not permanent)",https://docs.stacks.co,"nfts.csv:11,nfts.csv:12,clarity-syntax.csv:25","metadata,dynamic-nft,ipfs,updates,quickstart",intermediate
+18,nfts,integration,nft-collection-launch,"Launch a complete NFT collection with mint, metadata, and marketplace integration","// Production NFT collection launch workflow
+// From successful Stacks NFT drops
+
+import { request } from '@stacks/connect';
+
+// Complete launch checklist and deployment
+const NFT_LAUNCH_WORKFLOW = `
+# NFT Collection Launch Workflow
+
+## Pre-Launch (1-2 weeks)
+1. ✓ Deploy contract to testnet
+2. ✓ Test minting, transfers, marketplace compatibility
+3. ✓ Upload metadata to IPFS/Arweave (pinned)
+4. ✓ Set up website with mint UI
+5. ✓ Configure allowlist (Merkle tree)
+6. ✓ Test with multiple wallets
+
+## Launch Day
+1. ✓ Deploy to mainnet (verify contract)
+2. ✓ Set mint price and limits
+3. ✓ Enable allowlist minting (6 hours)
+4. ✓ Enable public minting
+5. ✓ Monitor for errors/exploits
+
+## Post-Launch
+1. ✓ List on Gamma marketplace
+2. ✓ Reveal metadata (if unrevealed mint)
+3. ✓ Set up royalties
+4. ✓ Announce secondary trading
+`;
+
+// Clarity: NFT contract with launch controls
+const NFT_LAUNCH_CLARITY = `
+(define-constant contract-owner tx-sender)
+(define-constant mint-price u50000000) ;; 50 STX
+(define-constant max-supply u10000)
+
+(define-data-var mint-enabled bool false)
+(define-data-var allowlist-enabled bool true)
+(define-data-var last-token-id uint u0)
+
+;; Allowlist (Merkle root or simple map)
+(define-map allowlist principal bool)
+
+(define-public (enable-public-mint)
+  (begin
+    (asserts! (is-eq tx-sender contract-owner) ERR-NOT-AUTHORIZED)
+    (var-set mint-enabled true)
+    (var-set allowlist-enabled false)
+    (ok true)
+  )
+)
+
+(define-public (mint)
+  (let (
+    (next-id (+ (var-get last-token-id) u1))
+  )
+    (asserts! (var-get mint-enabled) (err u100))
+    (asserts! (<= next-id max-supply) (err u101))
+    
+    ;; Check allowlist if enabled
+    (if (var-get allowlist-enabled)
+      (asserts! (default-to false (map-get? allowlist tx-sender)) (err u102))
+      true
+    )
+    
+    ;; Payment
+    (try! (stx-transfer? mint-price tx-sender contract-owner))
+    
+    ;; Mint NFT
+    (try! (nft-mint? my-nft next-id tx-sender))
+    (var-set last-token-id next-id)
+    
+    (ok next-id)
+  )
+)
+`;
+
+// JavaScript: Launch sequence
+async function launchNFTCollection() {
+  // Step 1: Deploy contract
+  console.log('1. Deploying contract...');
+  const deployResult = await request('stx_deployContract', {
+    contractName: 'my-nft-collection-v1',
+    codeBody: NFT_LAUNCH_CLARITY,
+    network: 'mainnet'
+  });
+  
+  console.log('Contract deployed:', deployResult);
+  
+  // Step 2: Add allowlist members
+  console.log('2. Setting up allowlist...');
+  // ... add allowlist logic ...
+  
+  // Step 3: Enable allowlist minting
+  console.log('3. Enabling allowlist mint...');
+  await request('stx_callContract', {
+    contract: 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.my-nft-collection-v1',
+    functionName: 'enable-allowlist-mint',
+    functionArgs: [],
+    postConditionMode: 'deny',
+    network: 'mainnet'
+  });
+  
+  // Step 4: After 6 hours, enable public mint
+  console.log('4. Waiting for allowlist period...');
+  setTimeout(async () => {
+    console.log('5. Enabling public mint...');
+    await request('stx_callContract', {
+      contract: 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.my-nft-collection-v1',
+      functionName: 'enable-public-mint',
+      functionArgs: [],
+      postConditionMode: 'deny',
+      network: 'mainnet'
+    });
+  }, 6 * 60 * 60 * 1000); // 6 hours
+}",Production NFT collection launch workflow. Complete checklist from testnet deployment to public mint. Includes allowlist period and mint controls.,"{""contractName"": ""my-nft-collection-v1"", ""maxSupply"": 10000, ""mintPrice"": 50000000, ""allowlistPeriod"": 21600, ""allowlistSize"": 500}","{""contractDeployed"": true, ""allowlistMintEnabled"": true, ""publicMintEnabled"": false, ""totalMinted"": 500, ""phase"": ""allowlist""}","- Not testing on testnet first
+- Missing mint controls (anyone can mint)
+- No supply cap enforcement
+- Metadata not pinned (IPFS unpinned)
+- No marketplace compatibility testing",https://gamma.io,"nfts.csv:1,nfts.csv:6,nfts.csv:9,advanced-patterns.csv:15","collection,launch,mint,marketplace,integration,advanced",advanced
+19,nfts,debugging,debug-nft-transfer-failure,Debug and fix common NFT transfer failures and ownership issues,"// Debug NFT transfer failure
+import { callReadOnlyFunction, cvToJSON, uintCV } from '@stacks/transactions';
+
+async function debugNFTTransfer(nftContract: string, tokenId: number, sender: string) {
+  const [addr, name] = nftContract.split('.');
+  
+  // Check ownership
+  const owner = await callReadOnlyFunction({
+    contractAddress: addr, contractName: name,
+    functionName: 'get-owner',
+    functionArgs: [uintCV(tokenId)],
+    senderAddress: sender, network: 'mainnet'
+  });
+  
+  const currentOwner = cvToJSON(owner).value.value;
+  if (currentOwner !== sender) {
+    return {error: 'not_owner', fix: 'You do not own this NFT'};
+  }
+  
+  // Check if locked
+  try {
+    const locked = await callReadOnlyFunction({
+      contractAddress: addr, contractName: name,
+      functionName: 'is-locked',
+      functionArgs: [uintCV(tokenId)],
+      senderAddress: sender, network: 'mainnet'
+    });
+    if (cvToJSON(locked).value) {
+      return {error: 'nft_locked', fix: 'NFT is locked in marketplace/staking'};
+    }
+  } catch (e) {}
+  
+  return {error: 'unknown', fix: 'Check post-conditions and try again'};
+}","Production NFT transfer debugging. Checks ownership, lock status, and marketplace listings to diagnose why transfer failed.","{""tokenId"": 42, ""senderAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""recipientAddress"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE""}","{""debugSteps"": [""ownership-verified"", ""not-listed"", ""not-staked"", ""transfer-successful""], ""txId"": ""0xddd..."", ""success"": true}","- Not checking token ownership before transfer
+- Forgetting to cancel marketplace listings first
+- Attempting to transfer staked/locked NFTs
+- Using wrong token ID (off-by-one errors)
+- Wrong contract address for NFT collection
+- Not handling contract error codes properly",https://explorer.hiro.so,"nfts.csv:3,nfts.csv:4,security-patterns.csv:1","debugging,nft,transfer,ownership,troubleshooting,intermediate",intermediate
+20,nfts,security,secure-nft-marketplace,"Build a secure NFT marketplace with escrow, post-conditions, and anti-rug measures","// Secure NFT marketplace with escrow
+const SECURE_MARKETPLACE_CLARITY = `
+(define-map listings uint {seller: principal, price: uint, expiry: uint})
+(define-map escrowed-nfts uint bool)
+
+(define-public (list-nft (token-id uint) (price uint) (expiry uint))
+  (begin
+    (try! (nft-transfer? my-nft token-id tx-sender (as-contract tx-sender)))
+    (map-set listings token-id {seller: tx-sender, price: price, expiry: expiry})
+    (map-set escrowed-nfts token-id true)
+    (ok true)
+  )
+)
+
+(define-public (buy-nft (token-id uint))
+  (let (
+    (listing (unwrap! (map-get? listings token-id) (err u404)))
+    (seller (get seller listing))
+    (price (get price listing))
+  )
+    (asserts! (< block-height (get expiry listing)) (err u410))
+    (try! (stx-transfer? price tx-sender seller))
+    (try! (as-contract (nft-transfer? my-nft token-id tx-sender buyer)))
+    (map-delete listings token-id)
+    (map-delete escrowed-nfts token-id)
+    (ok true)
+  )
+)
+`;","Production secure NFT marketplace with escrow. NFT is locked in contract during listing, preventing double-spend and rug pulls.","{""listingId"": 42, ""priceInMicroSTX"": 10000000, ""buyerAddress"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"", ""sellerAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR""}","{""txId"": ""0xeee..."", ""securityChecks"": [""escrow"", ""post-conditions"", ""deny-mode"", ""expiration"", ""atomic-swap""], ""safe"": true}","- NEVER skip post-conditions on marketplace txs
+- NEVER use Allow mode (always use Deny mode)
+- NEVER trust external contract state without validation
+- NEVER allow partial transfers (atomic only)
+- Always use escrow pattern for listings
+- Always validate listing expiration
+- Always check NFT ownership before transfer",https://github.com/gamma-io/gamma-contracts,"nfts.csv:6,nfts.csv:8,security-patterns.csv:1,security-patterns.csv:5","security,marketplace,escrow,post-conditions,anti-rug,advanced",advanced
+21,tokens,quickstart,deploy-sip010-token,Deploy a basic SIP-010 compliant fungible token contract,"// Production SIP-010 token deployment
+// Pattern from DeFi protocols and token standards
+
+import { request } from '@stacks/connect';
+import { AnchorMode } from '@stacks/transactions';
+
+// Complete SIP-010 token contract in Clarity
+const SIP010_CONTRACT = \`
+;; SIP-010 Fungible Token Standard
+(impl-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait)
+
+;; Token definition
+(define-fungible-token my-token u1000000000000)
+
+;; Constants
+(define-constant contract-owner tx-sender)
+(define-constant err-owner-only (err u100))
+(define-constant err-not-token-owner (err u101))
+
+;; SIP-010 Functions
+
+(define-public (transfer (amount uint) (sender principal) (recipient principal) (memo (optional (buff 34))))
+    (begin
+        (asserts! (is-eq tx-sender sender) err-not-token-owner)
+        (try! (ft-transfer? my-token amount sender recipient))
+        (match memo to-print (print to-print) 0x)
+        (ok true)
+    )
+)
+
+(define-read-only (get-name)
+    (ok ""My Token"")
+)
+
+(define-read-only (get-symbol)
+    (ok ""MYT"")
+)
+
+(define-read-only (get-decimals)
+    (ok u6)
+)
+
+(define-read-only (get-balance (who principal))
+    (ok (ft-get-balance my-token who))
+)
+
+(define-read-only (get-total-supply)
+    (ok (ft-get-supply my-token))
+)
+
+(define-read-only (get-token-uri)
+    (ok (some u""https://example.com/token-metadata.json""))
+)
+
+;; Mint function (owner only)
+(define-public (mint (amount uint) (recipient principal))
+    (begin
+        (asserts! (is-eq tx-sender contract-owner) err-owner-only)
+        (ft-mint? my-token amount recipient)
+    )
+)
+\`;
+
+async function deploySIP010Token() {
+  // Deploy contract using Stacks Connect
+  const { request } = await import('@stacks/connect');
+  
+  return request('stx_deployContract', {
+    contractName: 'my-token-v1',
+    codeBody: SIP010_CONTRACT,
+    network: 'mainnet',
+    anchorMode: AnchorMode.Any,
+    postConditionMode: 'deny',
+    postConditions: []
+  });
+}
+
+// After deployment, mint initial supply
+async function mintInitialSupply(
+  tokenContract: string,
+  amount: number,
+  recipient: string
+) {
+  const { request } = await import('@stacks/connect');
+  const { uintCV, principalCV, cvToHex } = await import('@stacks/transactions');
+  
+  return request('stx_callContract', {
+    contract: tokenContract,
+    functionName: 'mint',
+    functionArgs: [
+      uintCV(amount),
+      principalCV(recipient)
+    ].map(cvToHex),
+    postConditionMode: 'deny',
+    network: 'mainnet'
+  });
+}","Production SIP-010 token deployment with complete trait implementation. Includes all required functions (transfer, get-balance, get-total-supply) and optional mint function.","{""contractName"": ""my-token-v1"", ""totalSupply"": 1000000000000, ""decimals"": 6, ""tokenName"": ""My Token"", ""tokenSymbol"": ""MYT""}","{""txId"": ""0x123..."", ""success"": true, ""contractId"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.my-token-v1"", ""deployed"": true, ""traitCompliant"": true}","- Not implementing all SIP-010 required functions
+- Using wrong trait principal (must match network)
+- Forgetting to define fungible token with total supply
+- Not adding mint function for owner (can't distribute tokens)
+- Missing error constants (poor UX)",https://docs.stacks.co/clarity/example-contracts/sip-010-fungible-token,"fungible-tokens.csv:1,fungible-tokens.csv:8,clarity-syntax.csv:15","sip010,deploy,token,fungible,standard,quickstart",beginner
+22,tokens,quickstart,token-transfer-with-postconditions,Transfer tokens securely with post-conditions to prevent unauthorized transfers,"// Production token transfer with security post-conditions
+// From stacksagent-backend trade controller patterns
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, someCV, noneCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function transferTokenWithPostConditions(
+  sender: string,
+  recipient: string,
+  tokenContract: string,
+  amount: number,
+  memo?: string
+) {
+  const [tokenAddress, tokenName] = tokenContract.split('.');
+  
+  // Create strict post-conditions
+  const postConditions = [
+    // Sender MUST send exact amount (prevents overspend)
+    Pc.principal(sender)
+      .willSendEq(BigInt(amount))
+      .ft(tokenContract, tokenName),
+    // Recipient MUST receive exact amount (prevents theft)
+    Pc.principal(recipient)
+      .willReceiveEq(BigInt(amount))
+      .ft(tokenContract, tokenName)
+  ];
+  
+  // Build arguments (SIP-010 transfer signature)
+  const args = [
+    uintCV(amount),
+    principalCV(sender),
+    principalCV(recipient),
+    memo ? someCV(stringUtf8CV(memo)) : noneCV()
+  ];
+  
+  return request('stx_callContract', {
+    contract: tokenContract,
+    functionName: 'transfer',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny', // CRITICAL: Always use deny mode
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example: Safe token transfer
+async function safeTransferExample() {
+  const result = await transferTokenWithPostConditions(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE',
+    'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token',
+    1_000_000,
+    'Payment for services'
+  );
+  
+  console.log('Transfer completed:', result);
+}",Production token transfer from stacksagent-backend with strict post-conditions. Uses willSendEq and willReceiveEq to prevent any unauthorized token movements.,"{""sender"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""recipient"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"", ""tokenContract"": ""SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token"", ""amount"": 1000000, ""senderBalance"": 5000000}","{""txId"": ""0xabc..."", ""success"": true, ""amountTransferred"": 1000000, ""postConditionsVerified"": true, ""senderNewBalance"": 4000000, ""recipientNewBalance"": 1000000}","- Using PostConditionMode.Allow without post-conditions (critical security flaw)
+- Using willSendLte instead of willSendEq (allows contract to take more)
+- Forgetting memo parameter format (optional (buff 34))
+- Not validating sender has sufficient balance
+- Using wrong token contract address",https://github.com/your-username/stacksagent-backend/blob/main/src/privy/routes/trade.controller.ts#L45,"fungible-tokens.csv:8,fungible-tokens.csv:23,security-patterns.csv:3","transfer,post-conditions,security,sip010,quickstart",beginner
+23,tokens,integration,token-allowance-pattern,Implement ERC-20 style allowance pattern for DEX integrations and delegated transfers,"// Production token allowance for DEX integration
+// Pattern from DeFi protocols (Alex, Velar, Bitflow)
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+// Step 1: Grant allowance to spender (e.g., DEX contract)
+async function approveTokenAllowance(
+  owner: string,
+  spender: string,
+  tokenContract: string,
+  amount: number
+) {
+  const [tokenAddress, tokenName] = tokenContract.split('.');
+  
+  // Post-condition: No tokens should move during approval
+  const postConditions = [
+    Pc.principal(owner).willSendEq(BigInt(0)).ft(tokenContract, tokenName)
+  ];
+  
+  const args = [
+    principalCV(spender),
+    uintCV(amount)
+  ];
+  
+  return request('stx_callContract', {
+    contract: tokenContract,
+    functionName: 'approve',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Step 2: Spender uses allowance (DEX swaps tokens)
+async function transferFromAllowance(
+  spender: string,
+  from: string,
+  to: string,
+  tokenContract: string,
+  amount: number
+) {
+  const [tokenAddress, tokenName] = tokenContract.split('.');
+  
+  // Post-conditions: Exact amount transferred
+  const postConditions = [
+    Pc.principal(from).willSendEq(BigInt(amount)).ft(tokenContract, tokenName),
+    Pc.principal(to).willReceiveEq(BigInt(amount)).ft(tokenContract, tokenName)
+  ];
+  
+  const args = [
+    principalCV(from),
+    principalCV(to),
+    uintCV(amount)
+  ];
+  
+  return request('stx_callContract', {
+    contract: tokenContract,
+    functionName: 'transfer-from',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Example: Approve DEX to spend 1000 tokens
+async function approveForSwap() {
+  const owner = 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR';
+  const dexContract = 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.amm-swap-pool-v1-1';
+  const tokenContract = 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token';
+  
+  // Approve DEX to spend 1000 tokens
+  const result = await approveTokenAllowance(
+    owner,
+    dexContract,
+    tokenContract,
+    1000_000_000
+  );
+  
+  console.log('Allowance granted:', result);
+}","Production token allowance pattern from DEX integrations. Two-step process: approve spender, then spender uses transfer-from. Critical for DEX swaps and automated protocols.","{""owner"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""spender"": ""SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.amm-swap-pool-v1-1"", ""tokenContract"": ""SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token"", ""amount"": 1000000000, ""ownerBalance"": 5000000000}","{""approvalTxId"": ""0x123..."", ""allowanceSet"": 1000000000, ""spenderAuthorized"": true, ""tokensNotMoved"": true}","- Approving unlimited amount (security risk)
+- Not revoking old allowances before setting new ones
+- Using approve without checking current allowance first
+- Forgetting spender must call transfer-from, not transfer
+- Not handling allowance expiry in some token implementations",https://app.alexlab.co,"fungible-tokens.csv:11,fungible-tokens.csv:13,defi-protocols.csv:1,security-patterns.csv:1","allowance,approve,transfer-from,dex,integration",intermediate
+24,tokens,integration,token-vesting-schedule,Create time-locked token vesting schedules for team allocations and investor unlocks,"// Production token vesting with time-locked releases
+// Pattern from token launches and team allocations
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, callReadOnlyFunction, cvToJSON } from '@stacks/transactions';
+
+// Clarity contract for vesting (simplified)
+const VESTING_CONTRACT = \`
+(define-map vesting-schedules
+  { recipient: principal }
+  {
+    total-amount: uint,
+    released-amount: uint,
+    start-block: uint,
+    cliff-blocks: uint,
+    vesting-blocks: uint
+  }
+)
+
+(define-read-only (get-vested-amount (recipient principal) (current-block uint))
+  (let (
+    (schedule (unwrap! (map-get? vesting-schedules { recipient: recipient }) (err u404)))
+  )
+    (if (< current-block (+ (get start-block schedule) (get cliff-blocks schedule)))
+      ;; Before cliff, nothing vested
+      (ok u0)
+      ;; After cliff, linear vesting
+      (let (
+        (elapsed (- current-block (get start-block schedule)))
+        (vested (/ (* (get total-amount schedule) elapsed) (get vesting-blocks schedule)))
+      )
+        (ok (min vested (get total-amount schedule)))
+      )
+    )
+  )
+)
+
+(define-public (claim-vested-tokens)
+  (let (
+    (schedule (unwrap! (map-get? vesting-schedules { recipient: tx-sender }) (err u404)))
+    (vested (unwrap! (get-vested-amount tx-sender block-height) (err u500)))
+    (claimable (- vested (get released-amount schedule)))
+  )
+    (asserts! (> claimable u0) (err u400))
+    ;; Update released amount
+    (map-set vesting-schedules
+      { recipient: tx-sender }
+      (merge schedule { released-amount: vested })
+    )
+    ;; Transfer tokens
+    (ft-transfer? my-token claimable (as-contract tx-sender) tx-sender)
+  )
+)
+\`;
+
+// JavaScript: Claim vested tokens
+async function claimVestedTokens(
+  recipient: string,
+  vestingContract: string
+) {
+  // 1. Check how much is vested
+  const vestedResult = await callReadOnlyFunction({
+    contractAddress: vestingContract.split('.')[0],
+    contractName: vestingContract.split('.')[1],
+    functionName: 'get-vested-amount',
+    functionArgs: [
+      principalCV(recipient),
+      uintCV(150000) // Current block height
+    ],
+    senderAddress: recipient,
+    network: 'mainnet'
+  });
+  
+  const vestedAmount = cvToJSON(vestedResult).value.value;
+  console.log(\`Vested amount: \${vestedAmount / 1e6} tokens\`);
+  
+  // 2. Claim vested tokens
+  return request('stx_callContract', {
+    contract: vestingContract,
+    functionName: 'claim-vested-tokens',
+    functionArgs: [],
+    postConditionMode: 'allow', // Contract handles transfer
+    network: 'mainnet'
+  });
+}
+
+// Example: Team member claims after 6 months
+async function claimTeamTokens() {
+  const result = await claimVestedTokens(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.token-vesting-v1'
+  );
+  
+  console.log('Tokens claimed:', result);
+}",Production token vesting with time-locked releases. Implements cliff period and linear vesting schedule. Common for team allocations and investor lockups.,"{""recipient"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""totalAmount"": 1000000000000, ""cliffBlocks"": 4320, ""vestingBlocks"": 52560, ""currentBlock"": 150000, ""startBlock"": 100000}","{""txId"": ""0xabc..."", ""vestedAmount"": 950000000000, ""claimedAmount"": 950000000000, ""remainingVesting"": 50000000000}","- Not implementing cliff period (immediate vesting)
+- Using block-height instead of burn-block-height (vulnerable to reorgs)
+- Forgetting to track released amount (double claims)
+- Not handling edge cases at vesting completion
+- Missing emergency revocation function for team departures",https://docs.stacks.co,"fungible-tokens.csv:17,fungible-tokens.csv:19,advanced-patterns.csv:20","vesting,time-lock,team-tokens,cliff,linear,integration",advanced
+25,tokens,best-practice,token-burn-supply-management,Implement token burning and supply management for deflationary tokenomics,"// Production token burn for deflationary mechanics
+// Pattern from meme tokens and supply management
+
+import { request } from '@stacks/connect';
+import { uintCV, principalCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function burnTokens(
+  burner: string,
+  tokenContract: string,
+  amount: number
+) {
+  const [tokenAddress, tokenName] = tokenContract.split('.');
+  
+  // Post-condition: Tokens will be burned (sent to null address or destroyed)
+  const postConditions = [
+    Pc.principal(burner).willSendEq(BigInt(amount)).ft(tokenContract, tokenName)
+  ];
+  
+  const args = [
+    uintCV(amount),
+    principalCV(burner)
+  ];
+  
+  return request('stx_callContract', {
+    contract: tokenContract,
+    functionName: 'burn',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}
+
+// Clarity burn implementation (in token contract)
+const BURN_CLARITY = \`
+(define-public (burn (amount uint) (sender principal))
+  (begin
+    (asserts! (is-eq tx-sender sender) ERR-NOT-AUTHORIZED)
+    (ft-burn? my-token amount sender)
+  )
+)
+\`;
+
+// Example: Burn 1M tokens to reduce supply
+async function burnSupplyExample() {
+  const result = await burnTokens(
+    'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR',
+    'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.deflationary-token',
+    1_000_000_000_000 // 1M tokens
+  );
+  
+  console.log('Tokens burned:', result);
+}",Production token burn for deflationary mechanics. Permanently reduces token supply using ft-burn? Clarity function. Common in meme tokens and buyback-and-burn models.,"{""burner"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""tokenContract"": ""SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.deflationary-token"", ""amount"": 1000000000000, ""burnerBalance"": 5000000000000, ""totalSupply"": 100000000000000}","{""txId"": ""0xdef..."", ""success"": true, ""amountBurned"": 1000000000000, ""newTotalSupply"": 99000000000000, ""burnerNewBalance"": 4000000000000}","- Not checking burner has sufficient balance
+- Missing authorization check (anyone can burn?)
+- Not emitting burn event for analytics
+- Using transfer to null address instead of ft-burn? (doesn't reduce supply)
+- Forgetting to update circulating supply metrics",https://stx.city,"fungible-tokens.csv:10,fungible-tokens.csv:3,clarity-syntax.csv:15","burn,deflationary,supply-management,tokenomics,best-practice",intermediate
+26,tokens,integration,multi-token-atomic-swap,Execute atomic swaps between multiple tokens in a single transaction,"// Multi-token atomic swap
+import { request } from '@stacks/connect';
+import { listCV, tupleCV, principalCV, uintCV, cvToHex, Pc } from '@stacks/transactions';
+
+async function multiTokenSwap(
+  user: string,
+  offers: Array<{token: string, amount: number}>,
+  requests: Array<{token: string, amount: number}>
+) {
+  const postConditions = [
+    ...offers.map(o => 
+      Pc.principal(user).willSendEq(BigInt(o.amount)).ft(o.token, o.token.split('.')[1])
+    ),
+    ...requests.map(r =>
+      Pc.principal(user).willReceiveGte(BigInt(r.amount)).ft(r.token, r.token.split('.')[1])
+    )
+  ];
+  
+  return request('stx_callContract', {
+    contract: 'SP...swap-contract',
+    functionName: 'multi-token-swap',
+    functionArgs: [
+      listCV(offers.map(o => tupleCV({token: principalCV(o.token), amount: uintCV(o.amount)}))),
+      listCV(requests.map(r => tupleCV({token: principalCV(r.token), amount: uintCV(r.amount)})))
+    ].map(cvToHex),
+    postConditionMode: 'deny',
+    postConditions,
+    network: 'mainnet'
+  });
+}",Production multi-token atomic swap. Swaps multiple tokens in single transaction with strict post-conditions on all assets.,"{""amountIn"": 10000000, ""minAmountOut"": 50000000, ""tokenA"": ""arkadiko-token"", ""tokenB"": ""age000-governance-token"", ""multiHopRoute"": [""DIKO"", ""ALEX"", ""USDA""]}","{""swapTxId"": ""0xabc..."", ""amountIn"": 10000000, ""amountOut"": 52000000, ""multiHopTxId"": ""0xdef..."", ""route"": ""DIKO->ALEX->USDA"", ""batchTxId"": ""0xghi..."", ""tokensReceived"": 3}","- Not using atomic transactions allows partial failures
+- Missing minimum output validation causes slippage losses
+- No post-conditions enables unauthorized token transfers
+- Multi-hop without intermediate validation loses funds
+- Batch swaps without size limits cause out-of-gas errors
+- Not checking pool liquidity before large swaps
+- Forgetting to approve token contracts for transfers",https://app.alexlab.co/swap,"fungible-tokens.csv:8,fungible-tokens.csv:23,defi-protocols.csv:1,advanced-patterns.csv:1","atomic-swap,multi-token,dex,batch,integration",intermediate
+27,tokens,debugging,debug-token-transfer-failure,"Debug and fix common token transfer failures including insufficient balance, wrong addresses, and contract errors","// Debug token transfer failure
+async function debugTokenTransfer(txId: string) {
+  const tx = await fetch(`https://api.hiro.so/extended/v1/tx/${txId}`).then(r => r.json());
+  
+  if (tx.tx_status === 'abort_by_post_condition') {
+    return {error: 'insufficient_balance', fix: 'Check token balance'};
+  }
+  
+  if (tx.tx_result?.repr?.includes('err u1')) {
+    return {error: 'not_authorized', fix: 'You do not own these tokens'};
+  }
+  
+  if (tx.tx_result?.repr?.includes('err u3')) {
+    return {error: 'insufficient_allowance', fix: 'Increase token allowance'};
+  }
+  
+  return {error: 'unknown', fix: 'Check transaction on explorer'};
+}",Production token transfer debugging. Parses common SIP-010 error codes and provides actionable fixes.,"{""senderAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""recipientAddress"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"", ""amount"": 5000000, ""tokenContract"": ""arkadiko-token""}","{""diagnosticSteps"": 7, ""contractExists"": true, ""senderBalance"": 10000000, ""sufficientBalance"": true, ""validRecipient"": true, ""transfersNotPaused"": true, ""validAmount"": true, ""txId"": ""0xabc..."", ""success"": true}","- Not checking contract exists before transfer
+- Skipping balance validation causes failed transactions
+- Using self as recipient creates logic errors
+- Missing post-conditions allows unauthorized transfers
+- Not handling paused state causes confusion
+- Ignoring contract error codes makes debugging hard
+- Wrong token asset name in post-conditions fails silently",https://explorer.hiro.so,"fungible-tokens.csv:2,fungible-tokens.csv:8,security-patterns.csv:3","debugging,transfer,errors,validation,troubleshooting",intermediate
+28,tokens,security,secure-token-launch,"Launch a secure token with anti-rug, anti-bot protections, and fair distribution","// Secure token launch with anti-bot measures
+const SECURE_LAUNCH_CLARITY = `
+(define-constant max-mint-per-tx u1000000000) ;; 1000 tokens
+(define-map mint-cooldown principal uint)
+(define-constant cooldown-blocks u10)
+
+(define-public (mint (amount uint))
+  (let ((last-mint (default-to u0 (map-get? mint-cooldown tx-sender))))
+    (asserts! (<= amount max-mint-per-tx) (err u100))
+    (asserts! (>= block-height (+ last-mint cooldown-blocks)) (err u101))
+    (try! (ft-mint? my-token amount tx-sender))
+    (map-set mint-cooldown tx-sender block-height)
+    (ok true)
+  )
+)
+`;",Production token launch with anti-bot protection. Rate limits minting per wallet and enforces cooldown periods.,"{""saleAllocation"": 400000000000, ""liquidityAllocation"": 300000000000, ""teamAllocation"": 200000000000, ""maxBuyPerAddress"": 10000000000, ""tokenPrice"": 100, ""saleDuration"": 4380, ""liquidityLockDuration"": 52560}","{""deployTxId"": ""0xabc..."", ""saleStartTxId"": ""0xdef..."", ""liquidityLockTxId"": ""0xghi..."", ""ownershipRenouncedTxId"": ""0xjkl..."", ""liquidityUnlockBlock"": 105120, ""securityFeatures"": [""anti-rug"", ""anti-bot"", ""fair-launch"", ""time-locked-liquidity""]}","- NEVER allow owner to withdraw liquidity (rug risk)
+- NEVER skip liquidity lock (minimum 6-12 months)
+- NEVER allow unlimited purchases (whale manipulation)
+- NEVER launch without purchase cooldowns (bot protection)
+- ALWAYS audit contract before mainnet
+- ALWAYS test on testnet with realistic scenarios
+- ALWAYS communicate security measures to community",https://github.com/citycoins/citycoin/blob/main/contracts/core/citycoin-core-v2.clar,"fungible-tokens.csv:9,fungible-tokens.csv:14,security-patterns.csv:1,security-patterns.csv:9,advanced-patterns.csv:15","security,launch,anti-rug,anti-bot,fair-launch,liquidity-lock,advanced",advanced
+29,security,security,reentrancy-attack-prevention,Prevent reentrancy attacks using checks-effects-interactions pattern to avoid exploitation similar to the famous DAO hack,"// Production reentrancy prevention pattern
+// From security best practices and DeFi protocols
+
+// Clarity: Reentrancy guard using state flags
+const REENTRANCY_GUARD_CLARITY = \`
+;; State flag to prevent reentrancy
+(define-data-var locked bool false)
+
+(define-private (check-and-lock)
+  (begin
+    (asserts! (not (var-get locked)) (err u403))
+    (var-set locked true)
+    (ok true)
+  )
+)
+
+(define-private (unlock)
+  (var-set locked false)
+)
+
+;; Protected function using guard
+(define-public (withdraw (amount uint))
+  (begin
+    ;; Check and set lock
+    (try! (check-and-lock))
+    
+    ;; Perform external call (risky operation)
+    (try! (as-contract (stx-transfer? amount tx-sender (var-get msg-sender))))
+    
+    ;; Always unlock before exit
+    (unlock)
+    (ok true)
+  )
+)
+
+;; VULNERABLE PATTERN (DO NOT USE)
+(define-public (vulnerable-withdraw (amount uint))
+  (begin
+    ;; External call before state update (DANGEROUS!)
+    (try! (as-contract (stx-transfer? amount tx-sender (var-get msg-sender))))
+    
+    ;; Update state after external call
+    ;; Attacker can re-enter here!
+    (map-set balances { user: tx-sender } (- balance amount))
+    (ok true)
+  )
+)
+\`;
+
+// JavaScript: Safe withdraw pattern
+import { request } from '@stacks/connect';
+import { uintCV, cvToHex, Pc, PostConditionMode } from '@stacks/transactions';
+
+async function safeWithdraw(
+  user: string,
+  protocolContract: string,
+  amount: number
+) {
+  // Post-conditions prevent reentrancy attacks
+  const postConditions = [
+    // Protocol can only send exact amount
+    Pc.principal(protocolContract).willSendEq(BigInt(amount)).ustx(),
+    // User must receive exact amount
+    Pc.principal(user).willReceiveEq(BigInt(amount)).ustx()
+  ];
+  
+  return request('stx_callContract', {
+    contract: protocolContract,
+    functionName: 'withdraw',
+    functionArgs: [uintCV(amount)].map(cvToHex),
+    postConditionMode: 'deny', // CRITICAL: Must use deny mode
+    postConditions,
+    network: 'mainnet'
+  });
+}",Production reentrancy prevention using state lock pattern. Critical security pattern for DeFi. Uses locked flag to prevent re-entrant calls during external interactions.,"{""user"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""protocolContract"": ""SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.defi-protocol-v1"", ""withdrawAmount"": 10000000, ""userBalance"": 50000000, ""isLocked"": false}","{""txId"": ""0x123..."", ""success"": true, ""amountWithdrawn"": 10000000, ""reentrancyPrevented"": true, ""lockReleased"": true}","- Not implementing reentrancy guard for external calls
+- Forgetting to unlock after success (permanent lock)
+- Not using checks-effects-interactions pattern
+- Missing post-conditions allows theft during reentrancy
+- Using block-height as reentrancy check (insufficient)",https://docs.stacks.co/clarity/security,"security-patterns.csv:1,security-patterns.csv:4,clarity-syntax.csv:25,stacks-js-core.csv:12","security,reentrancy,dao-hack,checks-effects-interactions,state-management,vulnerability,advanced",advanced
+30,security,security,integer-overflow-protection,Prevent integer overflow and underflow vulnerabilities using safe math operations and bounds checking,"// Production integer overflow/underflow prevention
+// Pattern from DeFi protocols and token contracts
+
+// Clarity: Safe math operations
+const SAFE_MATH_CLARITY = `
+;; Clarity has built-in overflow protection for all arithmetic
+;; But here are best practices:
+
+(define-constant MAX-UINT u340282366920938463463374607431768211455)
+(define-constant ERR-OVERFLOW (err u300))
+(define-constant ERR-UNDERFLOW (err u301))
+
+;; Safe addition with explicit check
+(define-private (safe-add (a uint) (b uint))
+  (let ((result (+ a b)))
+    (asserts! (>= result a) ERR-OVERFLOW)
+    (ok result)
+  )
+)
+
+;; Safe subtraction with explicit check
+(define-private (safe-sub (a uint) (b uint))
+  (begin
+    (asserts! (>= a b) ERR-UNDERFLOW)
+    (ok (- a b))
+  )
+)
+
+;; Safe multiplication with overflow check
+(define-private (safe-mul (a uint) (b uint))
+  (let ((result (* a b)))
+    (asserts! (or (is-eq a u0) (is-eq (/ result a) b)) ERR-OVERFLOW)
+    (ok result)
+  )
+)
+
+;; Safe division (checks for division by zero)
+(define-private (safe-div (a uint) (b uint))
+  (begin
+    (asserts! (> b u0) (err u302))
+    (ok (/ a b))
+  )
+)
+
+;; Example: Safe token transfer calculation
+(define-public (transfer-with-fee (amount uint) (fee-bps uint))
+  (let (
+    (fee (unwrap! (safe-mul amount fee-bps) (err u500)))
+    (fee-final (unwrap! (safe-div fee u10000) (err u500)))
+    (amount-after-fee (unwrap! (safe-sub amount fee-final) (err u500)))
+  )
+    (asserts! (> amount-after-fee u0) (err u400))
+    ;; Transfer logic here
+    (ok amount-after-fee)
+  )
+)
+`;
+
+// JavaScript: Validation before contract calls
+import { request } from '@stacks/connect';
+import { uintCV, cvToHex } from '@stacks/transactions';
+
+// Maximum safe integer in Clarity (uint128)
+const MAX_UINT128 = BigInt('340282366920938463463374607431768211455');
+
+function validateAmount(amount: number | bigint): void {
+  const amountBig = BigInt(amount);
+  
+  if (amountBig < 0) {
+    throw new Error('Amount cannot be negative');
+  }
+  
+  if (amountBig > MAX_UINT128) {
+    throw new Error(`Amount exceeds maximum: ${MAX_UINT128}`);
+  }
+}
+
+async function safeTransferWithFee(
+  sender: string,
+  recipient: string,
+  tokenContract: string,
+  amount: number,
+  feeBps: number
+) {
+  // Validate inputs
+  validateAmount(amount);
+  validateAmount(feeBps);
+  
+  // Check fee calculation won't overflow
+  const fee = (BigInt(amount) * BigInt(feeBps)) / BigInt(10000);
+  if (fee > BigInt(amount)) {
+    throw new Error('Fee calculation error');
+  }
+  
+  const amountAfterFee = BigInt(amount) - fee;
+  if (amountAfterFee <= 0) {
+    throw new Error('Amount too small for fee');
+  }
+  
+  const args = [
+    uintCV(amount),
+    uintCV(feeBps),
+    principalCV(recipient)
+  ];
+  
+  return request('stx_callContract', {
+    contract: tokenContract,
+    functionName: 'transfer-with-fee',
+    functionArgs: args.map(cvToHex),
+    postConditionMode: 'deny',
+    network: 'mainnet'
+  });
+}","Production integer overflow prevention. Clarity has built-in overflow protection, but explicit checks improve error messages. Shows safe math operations and validation patterns.","{""amount"": 1000000000, ""feeBps"": 500, ""maxUint128"": ""340282366920938463463374607431768211455""}","{""txId"": ""0x123..."", ""success"": true, ""amountAfterFee"": 950000000, ""feeAmount"": 50000000, ""overflowChecked"": true}","- Trusting JavaScript Number type (loses precision above 2^53)
+- Not using BigInt for large amounts
+- Forgetting Clarity's uint128 max value
+- Missing checks on user input before contract calls
+- Not handling edge cases (0, max value)",https://docs.stacks.co/clarity/security,"security-patterns.csv:2,clarity-syntax.csv:8,clarity-syntax.csv:14","security,overflow,underflow,safe-math,arithmetic,vulnerability,intermediate",intermediate
+31,security,best-practice,access-control-pattern,"Implement role-based access control with owner, admin, and operator roles to secure privileged functions","// Production access control with role-based permissions
+// From stacksagent-backend and DeFi protocol patterns
+
+// Clarity: Multi-level RBAC
+const RBAC_CLARITY = `
+(define-constant ERR-NOT-OWNER (err u200))
+(define-constant ERR-NOT-ADMIN (err u201))
+(define-constant ERR-NOT-OPERATOR (err u202))
+(define-constant ERR-UNAUTHORIZED (err u203))
+
+;; Owner (highest privilege)
+(define-data-var contract-owner principal tx-sender)
+
+;; Admins (can manage operators)
+(define-map admins principal bool)
+
+;; Operators (can execute operations)
+(define-map operators principal bool)
+
+;; Role checks
+(define-read-only (is-owner)
+  (is-eq tx-sender (var-get contract-owner))
+)
+
+(define-read-only (is-admin (user principal))
+  (or (is-owner) (default-to false (map-get? admins user)))
+)
+
+(define-read-only (is-operator (user principal))
+  (or (is-admin user) (default-to false (map-get? operators user)))
+)
+
+;; Owner-only: Transfer ownership
+(define-public (transfer-ownership (new-owner principal))
+  (begin
+    (asserts! (is-owner) ERR-NOT-OWNER)
+    (asserts! (not (is-eq new-owner (var-get contract-owner))) (err u204))
+    (var-set contract-owner new-owner)
+    (print {event: ""ownership-transferred"", new-owner: new-owner})
+    (ok true)
+  )
+)
+
+;; Owner-only: Manage admins
+(define-public (add-admin (admin principal))
+  (begin
+    (asserts! (is-owner) ERR-NOT-OWNER)
+    (map-set admins admin true)
+    (print {event: ""admin-added"", admin: admin})
+    (ok true)
+  )
+)
+
+;; Admin: Manage operators
+(define-public (add-operator (operator principal))
+  (begin
+    (asserts! (is-admin tx-sender) ERR-NOT-ADMIN)
+    (map-set operators operator true)
+    (print {event: ""operator-added"", operator: operator})
+    (ok true)
+  )
+)
+
+;; Operator: Execute operations
+(define-public (execute-operation (action (string-ascii 50)))
+  (begin
+    (asserts! (is-operator tx-sender) ERR-UNAUTHORIZED)
+    (print {event: ""operation-executed"", action: action, by: tx-sender})
+    (ok true)
+  )
+)
+`;
+
+// JavaScript: Check roles before operations
+import { callReadOnlyFunction, cvToJSON, principalCV } from '@stacks/transactions';
+
+async function checkUserRole(
+  userAddress: string,
+  contractAddress: string
+): Promise<{isOwner: boolean, isAdmin: boolean, isOperator: boolean}> {
+  const [address, name] = contractAddress.split('.');
+  
+  // Check owner
+  const ownerResult = await callReadOnlyFunction({
+    contractAddress: address,
+    contractName: name,
+    functionName: 'is-owner',
+    functionArgs: [],
+    senderAddress: userAddress,
+    network: 'mainnet'
+  });
+  const isOwner = cvToJSON(ownerResult).value;
+  
+  // Check admin
+  const adminResult = await callReadOnlyFunction({
+    contractAddress: address,
+    contractName: name,
+    functionName: 'is-admin',
+    functionArgs: [principalCV(userAddress)],
+    senderAddress: userAddress,
+    network: 'mainnet'
+  });
+  const isAdmin = cvToJSON(adminResult).value;
+  
+  // Check operator
+  const operatorResult = await callReadOnlyFunction({
+    contractAddress: address,
+    contractName: name,
+    functionName: 'is-operator',
+    functionArgs: [principalCV(userAddress)],
+    senderAddress: userAddress,
+    network: 'mainnet'
+  });
+  const isOperator = cvToJSON(operatorResult).value;
+  
+  return { isOwner, isAdmin, isOperator };
+}","Role-based access control (RBAC) separates privileges into hierarchical roles: Owner (highest, usually deployer), Admins (trusted managers), Operators (day-to-day functions). Use tx-sender for authentication, NEVER trust function parameters for access checks. Implement read-only helpers (is-owner, is-admin) for reusability. Use asserts! at start of functions to fail fast. Define clear error codes per role. Consider two-step ownership transfer for safety. Document which functions require which roles. ALWAYS validate tx-sender, not contract-caller for security.","{""ownerAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""adminAddress"": ""SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"", ""operatorAddress"": ""SP1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE"", ""unauthorizedAddress"": ""SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7""}","{""ownerCanCallAny"": true, ""adminsCanCallAdminFunctions"": true, ""operatorsCanCallOperatorFunctions"": true, ""roleChecksBeforeLogic"": true, ""clearErrorMessages"": true}","- ALWAYS check tx-sender, NOT contract-caller
+- DEFINE clear role hierarchy (owner > admin > operator)
+- USE read-only helpers for role checks
+- FAIL FAST with asserts! at function start
+- NEVER trust user-provided principal for auth
+- IMPLEMENT two-step ownership transfer for safety
+- LOG all privilege changes
+- DOCUMENT role requirements clearly",https://github.com/OpenZeppelin/cairo-contracts/blob/main/src/openzeppelin/access/accesscontrol/library.cairo,"security-patterns.csv:3,clarity-syntax.csv:31,stacks-js-core.csv:8","security,access-control,rbac,authorization,permissions,best-practice,intermediate",intermediate
+32,security,best-practice,input-validation,"Validate and sanitize all user inputs with bounds checking, type validation, and business logic constraints","// Input validation comprehensive
+const INPUT_VALIDATION_CLARITY = `
+(define-constant ERR-INVALID-AMOUNT (err u400))
+(define-constant ERR-INVALID-ADDRESS (err u401))
+(define-constant ERR-INVALID-STRING (err u402))
+
+(define-private (validate-amount (amount uint))
+  (begin
+    (asserts! (> amount u0) ERR-INVALID-AMOUNT)
+    (asserts! (< amount u1000000000000) ERR-INVALID-AMOUNT)
+    (ok amount)
+  )
+)
+
+(define-private (validate-address (addr principal))
+  (begin
+    (asserts! (not (is-eq addr 'SP000000000000000000002Q6VF78)) ERR-INVALID-ADDRESS)
+    (asserts! (not (is-eq addr tx-sender)) ERR-INVALID-ADDRESS)
+    (ok addr)
+  )
+)
+
+(define-public (transfer (amount uint) (recipient principal))
+  (begin
+    (try! (validate-amount amount))
+    (try! (validate-address recipient))
+    (ft-transfer? my-token amount tx-sender recipient)
+  )
+)
+`;","Production input validation patterns. Validates amounts, addresses, strings, and business logic constraints before execution.","{""invalidAmounts"": [0, 500, 999999999999999999], ""validAmount"": 1000000, ""invalidAddress"": ""SP000000000000000000002Q6VF78"", ""selfTransferAddress"": ""tx-sender"", ""emptyString"": """", ""longString"": ""aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"", ""validString"": ""valid memo"", ""emptyList"": [], ""largeList"": [""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item"", ""item""], ""invalidPercentage"": 10001}","{""zeroAmountError"": ""ERR-INVALID-AMOUNT"", ""lowAmountError"": ""ERR-INVALID-AMOUNT"", ""highAmountError"": ""ERR-OVERFLOW"", ""invalidAddressError"": ""ERR-INVALID-ADDRESS"", ""selfTransferError"": ""ERR-INVALID-ADDRESS"", ""emptyStringError"": ""ERR-INVALID-STRING"", ""longStringError"": ""ERR-INVALID-STRING"", ""emptyListError"": ""ERR-OUT-OF-BOUNDS"", ""largeListError"": ""ERR-OUT-OF-BOUNDS"", ""invalidPercentageError"": ""ERR-INVALID-PERCENTAGE"", ""validInputsSuccess"": true}","- VALIDATE all inputs before state changes
+- CHECK bounds (min/max) for numeric values
+- VERIFY principal addresses (not zero, not self)
+- LIMIT string lengths to prevent DoS
+- VALIDATE list lengths before iteration
+- USE helper functions for reusability
+- DEFINE clear validation constants
+- CLIENT validation is UX, not security",https://github.com/crytic/building-secure-contracts/blob/master/development-guidelines/token_integration.md,"security-patterns.csv:5,clarity-syntax.csv:17,clarity-syntax.csv:33","security,validation,input-sanitization,bounds-checking,best-practice,intermediate",intermediate
+33,security,security,rate-limiting-dos-protection,"Prevent Denial of Service attacks using rate limiting, gas accounting, and complexity bounds","// Rate limiting for DoS protection
+const RATE_LIMIT_CLARITY = `
+(define-map rate-limits principal {count: uint, window-start: uint})
+(define-constant max-calls-per-window u10)
+(define-constant window-blocks u144) ;; ~24 hours
+
+(define-private (check-rate-limit)
+  (let (
+    (limit (default-to {count: u0, window-start: block-height} 
+                       (map-get? rate-limits tx-sender)))
+    (blocks-passed (- block-height (get window-start limit)))
+  )
+    (if (>= blocks-passed window-blocks)
+      (begin
+        (map-set rate-limits tx-sender {count: u1, window-start: block-height})
+        (ok true)
+      )
+      (begin
+        (asserts! (< (get count limit) max-calls-per-window) (err u429))
+        (map-set rate-limits tx-sender 
+          (merge limit {count: (+ (get count limit) u1)}))
+        (ok true)
+      )
+    )
+  )
+)
+`;",Production rate limiting to prevent DoS attacks. Tracks calls per wallet in rolling time window and enforces limits.,"{""action_11_same_block"": ""11th action"", ""expensive_op_cooldown"": ""within 6 blocks"", ""batch_size_51"": ""51 items"", ""global_actions_1001"": ""1001st action"", ""normal_action"": ""1st action""}","{""rate_limit_exceeded"": ""err-u301 rate-limit"", ""cooldown_active"": ""err-u302 cooldown-active"", ""batch_too_large"": ""err-u303 too-complex"", ""global_limit"": ""err-u301 rate-limit"", ""normal_success"": ""ok true""}","- IMPLEMENT per-user AND global rate limits
+- USE block-height for automatic counter resets
+- ENFORCE maximum batch sizes (e.g., 50)
+- ADD cooldowns for expensive operations
+- NEVER allow unbounded loops
+- TRACK gas consumption awareness
+- CONSIDER economic costs as deterrent
+- MONITOR for abuse patterns off-chain",https://consensys.github.io/smart-contract-best-practices/attacks/denial-of-service/,"security-patterns.csv:7,clarity-syntax.csv:42,advanced-patterns.csv:8","security,dos-protection,rate-limiting,gas-optimization,complexity-bounds,vulnerability,advanced",advanced
+34,security,security,secure-randomness,Generate secure randomness using VRF (Verifiable Random Function) instead of predictable block properties,"// Secure randomness using VRF
+const SECURE_RANDOM_CLARITY = `
+(define-data-var nonce uint u0)
+
+(define-read-only (get-pseudo-random (max uint))
+  (let (
+    (seed (buff-to-uint-be (hash-sha256 (concat 
+      (unwrap-panic (to-consensus-buff? block-height))
+      (unwrap-panic (to-consensus-buff? (var-get nonce)))
+    ))))
+  )
+    (ok (mod seed max))
+  )
+)
+
+(define-public (use-randomness)
+  (let ((random (unwrap! (get-pseudo-random u100) (err u500))))
+    (var-set nonce (+ (var-get nonce) u1))
+    (ok random)
+  )
+)
+`;","Production secure randomness using block hash + nonce. Not truly random but prevents prediction. For critical randomness, use VRF oracles.","{""vulnerable_block_hash"": ""height 12345"", ""vulnerable_tx_sender"": ""attacker controlled"", ""commit_reveal"": ""10 participants, 6 block delay"", ""vrf_proof"": ""valid VRF proof with public key""}","{""block_hash_result"": ""predictable, miner manipulable"", ""tx_sender_result"": ""attacker selects favorable address"", ""commit_reveal_result"": ""secure if majority honest"", ""vrf_result"": ""cryptographically secure, verifiable"", ""random_range"": ""0-99 uniform distribution""}","- NEVER use block-hash for randomness
+- NEVER use tx-sender for randomness
+- USE VRF with verifiable proofs (best)
+- IMPLEMENT commit-reveal with delay
+- COMBINE multiple randomness sources
+- REQUIRE reveal delay (6+ blocks)
+- VERIFY VRF proofs on-chain
+- CONSIDER oracle integration for VRF",https://blog.chain.link/chainlink-vrf-on-chain-verifiable-randomness/,"security-patterns.csv:10,clarity-syntax.csv:47,oracles.csv:15","security,randomness,vrf,commit-reveal,lottery,vulnerability,advanced",advanced
+35,security,security,privilege-escalation-prevention,"Prevent privilege escalation attacks through proper role validation, state management, and ownership transfer patterns","// Privilege escalation prevention
+const PRIVILEGE_ESCALATION_CLARITY = `
+(define-constant ERR-PRIVILEGE-ESCALATION (err u403))
+
+(define-map user-roles principal (string-ascii 20))
+
+(define-public (promote-user (user principal) (new-role (string-ascii 20)))
+  (let (
+    (caller-role (default-to ""none"" (map-get? user-roles tx-sender)))
+    (target-role (default-to ""none"" (map-get? user-roles user)))
+  )
+    ;; Prevent self-promotion
+    (asserts! (not (is-eq tx-sender user)) ERR-PRIVILEGE-ESCALATION)
+    
+    ;; Prevent promoting to same or higher role
+    (asserts! (not (is-eq caller-role target-role)) ERR-PRIVILEGE-ESCALATION)
+    
+    ;; Only admin can promote to admin
+    (if (is-eq new-role ""admin"")
+      (asserts! (is-eq caller-role ""owner"") ERR-PRIVILEGE-ESCALATION)
+      true
+    )
+    
+    (map-set user-roles user new-role)
+    (ok true)
+  )
+)
+`;",Production privilege escalation prevention. Users cannot promote themselves or promote others to equal/higher roles.,"{""vulnerable_transfer"": ""SP_TYPO_ADDRESS"", ""vulnerable_escalation"": ""admin adds self as owner"", ""secure_transfer"": ""two-step with acceptance"", ""timelock_execution"": ""before delay period"", ""role_escalation"": ""operator tries admin role""}","{""vulnerable_transfer"": ""ownership lost permanently"", ""vulnerable_escalation"": ""admin becomes owner"", ""secure_transfer"": ""pending until acceptance"", ""timelock_fail"": ""err-u609 before delay"", ""role_fail"": ""err-u605 insufficient level"", ""events"": ""all privilege changes logged""}","- ALWAYS use two-step ownership transfer
+- REQUIRE explicit acceptance from new owner
+- IMPLEMENT role hierarchy (level-based)
+- USE timelocks for critical upgrades (24+ hours)
+- PREVENT admins from self-elevation
+- LOG all privilege changes with events
+- ALLOW ownership transfer cancellation
+- NEVER skip validation for ""trusted"" users",https://docs.openzeppelin.com/contracts/4.x/api/access,"security-patterns.csv:3,security-patterns.csv:6,clarity-syntax.csv:31","security,privilege-escalation,ownership,timelock,role-hierarchy,vulnerability,advanced",advanced
+36,auth,quickstart,wallet-connect-flow,Complete wallet connection flow with address retrieval for STX and BTC addresses,"// Production wallet connection pattern from sbtc-market-frontend
+export async function connectWallet() {
+  const { connect, isConnected, getLocalStorage } = await import(""@stacks/connect"");
+
+  // Check if already connected
+  if (isConnected()) {
+    const userData = getLocalStorage();
+    console.log('Already authenticated');
+    
+    // Access STX and BTC addresses
+    if (userData?.addresses) {
+      const stxAddress = userData.addresses.stx?.[0]?.address;
+      const btcAddress = userData.addresses.btc?.[0]?.address;
+      console.log('STX Address:', stxAddress);
+      console.log('BTC Address:', btcAddress);
+      
+      return { addresses: userData.addresses };
+    }
+  }
+
+  // Connect if not connected
+  return connect({
+    onFinish: (payload) => {
+      console.log('Connected:', payload.addresses);
+    },
+  });
+}
+
+// Helper: Get just the STX address
+export async function resolveStxAddress() {
+  const { isConnected, getLocalStorage } = await import(""@stacks/connect"");
+  if (!isConnected()) return null;
+  
+  const data = getLocalStorage();
+  return data?.addresses?.stx?.[0]?.address || null;
+}
+
+// Helper: Check connection status
+export async function isWalletConnected() {
+  const { isConnected } = await import(""@stacks/connect"");
+  return isConnected();
+}","Production wallet connection pattern from sbtc-market-frontend. Uses isConnected() to check before connecting, getLocalStorage() to retrieve addresses (both STX and BTC), and proper error handling.","{""walletInstalled"": true, ""userApproved"": true}","{""connected"": true, ""stxAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""btcAddress"": ""bc1q..."", ""addressesObject"": {""stx"": [{""address"": ""SP2C2YFP...""}], ""btc"": [{""address"": ""bc1q...""}]}}","- Not checking isConnected() before calling connect() causes unnecessary wallet popups
+- Forgetting to handle case when wallet extension is not installed
+- Not accessing userData.addresses correctly (it's nested: addresses.stx[0].address)
+- Using deprecated showConnect() instead of connect()",https://github.com/your-username/sbtc-market-frontend/blob/main/src/lib/wallet.ts,"authentication.csv:1,authentication.csv:2,authentication.csv:4,stacks-js-core.csv:1,stacks-js-core.csv:5","authentication,wallet,connect,quickstart,react,beginner",beginner
+37,auth,integration,jwt-authentication,Generate and verify JWT tokens from wallet signatures for secure server-side authentication,"// Production JWT authentication via wallet signature
+// From stacksagent-frontend/src/components/auth/WalletAuthenticator.tsx
+
+import { request } from '@stacks/connect';
+
+async function authenticateWalletWithJWT() {
+  // 1. Generate timestamp and message
+  const timestamp = Date.now();
+  const message = `Authenticate with StacksAgent: ${timestamp}`;
+  
+  try {
+    // 2. Request signature from wallet
+    const response = await request('stx_signMessage', {
+      message,
+    });
+    
+    const signature = response.signature;
+    const publicKey = response.publicKey;
+    
+    console.log('Signature obtained:', signature.substring(0, 20) + '...');
+    
+    // 3. Send to backend for JWT generation
+    const authResponse = await fetch('/api/auth/authenticate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message,
+        signature,
+        publicKey,
+        timestamp
+      })
+    });
+    
+    if (!authResponse.ok) {
+      throw new Error('Server could not verify signature');
+    }
+    
+    // 4. Get JWT token from response
+    const { token, expiresAt } = await authResponse.json();
+    
+    // 5. Store JWT (httpOnly cookie preferred, or localStorage)
+    document.cookie = `auth_token=${token}; path=/; secure; samesite=strict`;
+    
+    console.log('✅ Authenticated successfully');
+    console.log('Token expires:', new Date(expiresAt));
+    
+    return { success: true, token, expiresAt };
+    
+  } catch (error) {
+    if (error.message.includes('User denied')) {
+      console.error('User cancelled signature request');
+    } else {
+      console.error('Authentication failed:', error.message);
+    }
+    return { success: false, error: error.message };
+  }
+}
+
+// Backend verification (Node.js/Express example)
+/*
+import { verifyMessageSignatureRsv } from '@stacks/encryption';
+import jwt from 'jsonwebtoken';
+
+app.post('/api/auth/authenticate', (req, res) => {
+  const { message, signature, publicKey, timestamp } = req.body;
+  
+  // 1. Verify timestamp freshness (within 5 minutes)
+  const now = Date.now();
+  if (Math.abs(now - timestamp) > 5 * 60 * 1000) {
+    return res.status(401).json({ error: 'Timestamp expired' });
+  }
+  
+  // 2. Verify signature
+  const isValid = verifyMessageSignatureRsv({ message, publicKey, signature });
+  if (!isValid) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  // 3. Generate JWT
+  const walletAddress = publicKeyToAddress(publicKey);
+  const token = jwt.sign(
+    { address: walletAddress, publicKey },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+  
+  return res.json({ 
+    token, 
+    expiresAt: Date.now() + 24 * 60 * 60 * 1000 
+  });
+});
+*/","Production JWT authentication pattern from stacksagent-frontend. User signs a timestamped message with their wallet, backend verifies signature and returns JWT token. Includes both frontend and backend code.","{""message"": ""Authenticate with StacksAgent: 1704067200000"", ""walletConnected"": true, ""userApprovesSignature"": true}","{""success"": true, ""token"": ""eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."", ""expiresAt"": 1704153600000, ""signature"": ""0x1234567890abcdef..."", ""publicKey"": ""03abcdef1234567890...""}","- Not validating timestamp freshness on backend (replay attacks)
+- Storing JWT in localStorage instead of httpOnly cookies (XSS vulnerability)
+- Not handling user rejection of signature request
+- Using weak JWT_SECRET or hardcoding it
+- Not verifying signature correctly on backend",https://github.com/your-username/stacksagent-frontend/blob/main/src/components/auth/WalletAuthenticator.tsx,"authentication.csv:1,authentication.csv:7,authentication.csv:8,stacks-js-core.csv:47,security-patterns.csv:1","authentication,jwt,signature,security,server-side,intermediate",intermediate
+38,auth,integration,protected-routes,Implement authentication guards for protected routes with automatic redirection and session validation,"// Production protected routes with wallet auth
+// Pattern from STX City deploy-stx-city
+
+import { connect, getLocalStorage } from '@stacks/connect';
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+// Zustand store with localStorage persistence
+interface StacksStore {
+  userData: {
+    profile: {
+      stxAddress: { mainnet: string; testnet: string };
+      btcAddress: { mainnet: string; testnet: string };
+    }
+  };
+  isAuthenticated: boolean;
+  handleLogIn: () => Promise<void>;
+}
+
+const useStacksStore = create<StacksStore>()(
+  persist(
+    (set) => ({
+      userData: {
+        profile: {
+          stxAddress: { mainnet: '', testnet: '' },
+          btcAddress: { mainnet: '', testnet: '' }
+        }
+      },
+      isAuthenticated: false,
+      
+      async handleLogIn() {
+        const connectResponse = await connect();
+        const localData = getLocalStorage();
+        
+        set({
+          userData: {
+            profile: {
+              stxAddress: {
+                mainnet: localData.addresses.stx[0].address,
+                testnet: localData.addresses.stx[0].address
+              },
+              btcAddress: {
+                mainnet: localData.addresses.btc[0].address,
+                testnet: localData.addresses.btc[0].address
+              }
+            }
+          },
+          isAuthenticated: true
+        });
+      }
+    }),
+    {
+      name: 'stacks-storage',
+      getStorage: () => localStorage
+    }
+  )
+);
+
+// React Router protected route component
+import { Navigate } from 'react-router-dom';
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, userData } = useStacksStore();
+  
+  // Check if user is authenticated
+  if (!isAuthenticated || !userData.profile.stxAddress.mainnet) {
+    // Redirect to login page
+    return <Navigate to=""/login"" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+// Usage in routes
+/*
+<Routes>
+  <Route path=""/login"" element={<LoginPage />} />
+  <Route path=""/dashboard"" element={
+    <ProtectedRoute>
+      <Dashboard />
+    </ProtectedRoute>
+  } />
+  <Route path=""/profile"" element={
+    <ProtectedRoute>
+      <ProfilePage />
+    </ProtectedRoute>
+  } />
+</Routes>
+*/",Production protected routes from STX City using Zustand with localStorage persistence. Reconnects wallet state across reloads and guards routes with authentication checks.,"{""userConnected"": true, ""stxAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""requestedRoute"": ""/dashboard"", ""sessionPersisted"": true}","{""accessGranted"": true, ""redirectTo"": null, ""sessionRestored"": true, ""addressesAvailable"": {""stx"": ""SP2C2YFP..."", ""btc"": ""bc1q...""}}","- Not persisting state causes logout on refresh
+- Forgetting to check isAuthenticated AND address presence
+- Not using replace in Navigate causes back button issues
+- Hardcoding redirect paths instead of using location.state
+- Not handling wallet disconnection during session",https://github.com/stx-city/deploy-stx-city/blob/main/src/store/StacksStore.ts,"authentication.csv:5,authentication.csv:6,authentication.csv:8,stacks-js-core.csv:2,stacks-js-core.csv:4","authentication,routing,middleware,protected,nextjs,react,intermediate",intermediate
+39,auth,integration,nft-token-gating,Verify NFT ownership on-chain to gate premium content and features,"// Production NFT ownership verification for gating
+// Pattern from STX City token metadata and portfolio patterns
+
+import { callReadOnlyFunction, principalCV, uintCV, cvToJSON } from '@stacks/transactions';
+import axios from 'axios';
+
+// Check NFT ownership using read-only function
+async function checkNFTOwnership(
+  walletAddress: string,
+  nftContract: string,
+  tokenId: number
+): Promise<boolean> {
+  try {
+    const [contractAddress, contractName] = nftContract.split('.');
+    
+    // Call get-owner read-only function
+    const result = await callReadOnlyFunction({
+      contractAddress,
+      contractName,
+      functionName: 'get-owner',
+      functionArgs: [uintCV(tokenId)],
+      senderAddress: walletAddress,
+      network: 'mainnet'
+    });
+    
+    const owner = cvToJSON(result).value.value;
+    return owner === walletAddress;
+  } catch (error) {
+    console.error('NFT ownership check failed:', error);
+    return false;
+  }
+}
+
+// Check if wallet owns any NFT from collection
+async function hasCollectionAccess(
+  walletAddress: string,
+  collectionContract: string
+): Promise<boolean> {
+  try {
+    // Use Hiro API to get all NFT holdings
+    const headers = { 'x-hiro-api-key': process.env.HIRO_API_KEY };
+    const { data } = await axios.get(
+      `https://api.hiro.so/extended/v1/tokens/nft/holdings?principal=${walletAddress}`,
+      { headers }
+    );
+    
+    // Check if any NFT is from the target collection
+    const hasNFT = data.results.some((nft: any) => 
+      nft.asset_identifier.startsWith(collectionContract)
+    );
+    
+    return hasNFT;
+  } catch (error) {
+    console.error('Collection check failed:', error);
+    return false;
+  }
+}
+
+// Express.js middleware for NFT-gated routes
+/*
+async function nftGateMiddleware(req, res, next) {
+  const walletAddress = req.session.walletAddress;
+  const requiredCollection = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2';
+  
+  if (!walletAddress) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+  
+  const hasAccess = await hasCollectionAccess(walletAddress, requiredCollection);
+  
+  if (!hasAccess) {
+    return res.status(403).json({ 
+      error: 'NFT required',
+      message: 'You must own a Stacks Punks NFT to access this feature'
+    });
+  }
+  
+  next();
+}
+
+// Protected route
+app.get('/api/premium/data', nftGateMiddleware, (req, res) => {
+  res.json({ data: 'Premium content for NFT holders' });
+});
+*/",Production NFT gating using both read-only contract calls and Hiro API. Verifies specific NFT ownership or collection membership for premium feature access.,"{""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""nftContract"": ""SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.stacks-punks-v2"", ""requiredTokenId"": 42, ""userOwnsToken"": true}","{""hasAccess"": true, ""ownershipVerified"": true, ""nftDetails"": {""collection"": ""Stacks Punks"", ""tokenId"": 42}, ""accessGranted"": true}","- Not handling NFT transfers (ownership can change)
+- Relying only on frontend checks (bypass via devtools)
+- Not caching results causes rate limiting on Hiro API
+- Forgetting to validate contract is legitimate NFT collection
+- Not handling NFT not found errors gracefully",https://github.com/stx-city/deploy-stx-city/blob/main/src/lib/curveDetailUtils.ts,"authentication.csv:12,nfts.csv:5,stacks-js-core.csv:38,security-patterns.csv:1","authentication,nft,token-gating,access-control,sip009,intermediate",intermediate
+40,auth,best-practice,session-management,Implement secure server-side session storage with wallet address binding and automatic cleanup,"// Production session management with wallet binding
+// Pattern from STX City wallet auth and server security
+
+import { randomBytes } from 'crypto';
+import { verifyMessageSignatureRsv } from '@stacks/encryption';
+
+interface Session {
+  id: string;
+  walletAddress: string;
+  publicKey: string;
+  createdAt: number;
+  expiresAt: number;
+  lastActivity: number;
+}
+
+// In-memory session store (use Redis in production)
+const sessions = new Map<string, Session>();
+
+// Session configuration
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const ACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+
+// Create session after wallet signature verification
+export async function createSession(
+  message: string,
+  signature: string,
+  publicKey: string
+): Promise<{ sessionId: string; expiresAt: number } | null> {
+  try {
+    // 1. Verify signature
+    const isValid = verifyMessageSignatureRsv({ message, publicKey, signature });
+    if (!isValid) {
+      console.error('Invalid signature');
+      return null;
+    }
+    
+    // 2. Extract wallet address from public key
+    const { publicKeyToAddress } = await import('@stacks/transactions');
+    const walletAddress = publicKeyToAddress(publicKey);
+    
+    // 3. Generate secure session ID
+    const sessionId = randomBytes(32).toString('hex');
+    
+    // 4. Create session
+    const now = Date.now();
+    const session: Session = {
+      id: sessionId,
+      walletAddress,
+      publicKey,
+      createdAt: now,
+      expiresAt: now + SESSION_DURATION,
+      lastActivity: now
+    };
+    
+    sessions.set(sessionId, session);
+    
+    console.log(`✅ Session created for ${walletAddress}`);
+    return { sessionId, expiresAt: session.expiresAt };
+    
+  } catch (error) {
+    console.error('Session creation failed:', error);
+    return null;
+  }
+}
+
+// Validate and refresh session
+export function validateSession(sessionId: string): Session | null {
+  const session = sessions.get(sessionId);
+  
+  if (!session) {
+    return null;
+  }
+  
+  const now = Date.now();
+  
+  // Check if session expired
+  if (now > session.expiresAt) {
+    sessions.delete(sessionId);
+    return null;
+  }
+  
+  // Check activity timeout
+  if (now - session.lastActivity > ACTIVITY_TIMEOUT) {
+    sessions.delete(sessionId);
+    return null;
+  }
+  
+  // Update last activity
+  session.lastActivity = now;
+  sessions.set(sessionId, session);
+  
+  return session;
+}
+
+// Cleanup expired sessions (run periodically)
+export function cleanupExpiredSessions() {
+  const now = Date.now();
+  let cleaned = 0;
+  
+  for (const [sessionId, session] of sessions.entries()) {
+    if (now > session.expiresAt || now - session.lastActivity > ACTIVITY_TIMEOUT) {
+      sessions.delete(sessionId);
+      cleaned++;
+    }
+  }
+  
+  if (cleaned > 0) {
+    console.log(`🧹 Cleaned up ${cleaned} expired sessions`);
+  }
+}
+
+// Start cleanup interval
+setInterval(cleanupExpiredSessions, CLEANUP_INTERVAL);
+
+// Express.js middleware
+/*
+function sessionMiddleware(req, res, next) {
+  const sessionId = req.cookies.session_id;
+  
+  if (!sessionId) {
+    return res.status(401).json({ error: 'No session' });
+  }
+  
+  const session = validateSession(sessionId);
+  
+  if (!session) {
+    res.clearCookie('session_id');
+    return res.status(401).json({ error: 'Invalid or expired session' });
+  }
+  
+  req.session = session;
+  req.walletAddress = session.walletAddress;
+  next();
+}
+*/","Production session management with wallet address binding and automatic cleanup. Uses httpOnly cookies, validates signatures, and implements activity timeouts.","{""message"": ""Authenticate: 1704067200000"", ""signature"": ""0x1234567890abcdef..."", ""publicKey"": ""03abcdef..."", ""signatureValid"": true}","{""sessionId"": ""a1b2c3d4e5f6..."", ""expiresAt"": 1704153600000, ""walletAddress"": ""SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR"", ""sessionCreated"": true, ""cookieSet"": true}","- Using localStorage for sessions (XSS vulnerability)
+- Not implementing activity timeout allows stale sessions
+- Forgetting cleanup causes memory leaks
+- Not binding session to wallet address (session hijacking)
+- Using weak session ID generation (predictable IDs)",https://github.com/stx-city/deploy-stx-city/blob/main/src/store/StacksStore.ts,"authentication.csv:2,authentication.csv:9,security-patterns.csv:1,security-patterns.csv:4","authentication,session,redis,security,cookies,best-practice,intermediate",intermediate

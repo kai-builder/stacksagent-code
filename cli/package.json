@@ -1,6 +1,6 @@
 {
   "name": "stacksagent",
-  "version": "1.4.0",
+  "version": "1.5.1",
   "description": "AI Skill for building Stacks blockchain applications - CLI installer",
   "bin": {
     "stacksagent": "./dist/index.js"
